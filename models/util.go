@@ -23,7 +23,7 @@ type config struct {
 
 type ChainInfo struct {
 	ChainName        string  `yaml:"CHAIN_NAME"`
-	RPC              string  `yaml:"GRPC"`
+	RPC              string  `yaml:"RPC"`
 	LCD              string  `yaml:"LCD"`
 	ValidatorAddress string  `yaml:"VALIDATOR_ADDRESS"`
 	PrivKey          string  `yaml:"PRIV_KEY"`
