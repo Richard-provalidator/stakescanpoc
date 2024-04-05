@@ -8,9 +8,10 @@ import (
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 
-	// sdktx "github.com/cosmos/cosmos-sdk/types/tx"
-	// gaia "github.com/cosmos/gaia/v15/app"
+	sdktx "github.com/cosmos/cosmos-sdk/types/tx"
+	gaia "github.com/cosmos/gaia/v15/app"
 	"github.com/go-resty/resty/v2"
+
 	"github.com/stakescanpoc/log"
 	"github.com/stakescanpoc/models"
 )
@@ -42,43 +43,43 @@ func GetBlockByHeight(RPC string, height int64) (*coretypes.ResultBlock, error) 
 }
 
 func TxFinder(result *coretypes.ResultBlock) {
-	// encCfg := gaia.RegisterEncodingConfig()
-	// txCfg := encCfg.TxConfig
-	// for _, txBytes := range result.Block.Data.Txs {
-	// 	tx, err := txCfg.TxDecoder()(txBytes)
-	// 	if err != nil {
-	// 		log.Logger.Error.Println("TxDecoder Failed : ", err)
-	// 	}
-	// 	txJSON, err := txCfg.TxJSONEncoder()(tx)
-	// 	if err != nil {
-	// 		log.Logger.Error.Println("TxJSONEncoder Failed : ", err)
-	// 	}
-	// log.Logger.Trace.Println("txBytes", txBytes)
-	// log.Logger.Trace.Println("tx", tx)
-	// log.Logger.Trace.Println("txJSON", txJSON)
-	// sdkTx := tx.(interface {
-	// 	GetProtoTx() *sdktx.Tx
-	// }).GetProtoTx()
-	// _ = sdkTx // use it
+	encCfg := gaia.RegisterEncodingConfig()
+	txCfg := encCfg.TxConfig
+	for _, txBytes := range result.Block.Data.Txs {
+		tx, err := txCfg.TxDecoder()(txBytes)
+		if err != nil {
+			log.Logger.Error.Println("TxDecoder Failed : ", err)
+		}
+		txJSON, err := txCfg.TxJSONEncoder()(tx)
+		if err != nil {
+			log.Logger.Error.Println("TxJSONEncoder Failed : ", err)
+		}
+		log.Logger.Trace.Println("txBytes", txBytes)
+		log.Logger.Trace.Println("tx", tx)
+		log.Logger.Trace.Println("txJSON", txJSON)
+		sdkTx := tx.(interface {
+			GetProtoTx() *sdktx.Tx
+		}).GetProtoTx()
+		_ = sdkTx // use it
 
-	// // Base64 디코딩
-	// decoded, err := base64.StdEncoding.DecodeString(strings.Split(tx.String(), "Tx{")[0])
-	// if err != nil {
-	// 	log.Logger.Error.Println("base64 디코딩 실패:", err)
-	// }
+		//// Base64 디코딩
+		//decoded, err := base64.StdEncoding.DecodeString(strings.Split(sdkTx.String(), "Tx{")[0])
+		//if err != nil {
+		//	log.Logger.Error.Println("base64 디코딩 실패:", err)
+		//}
+		//
+		//var decoder decode.Decoder
+		//decodedTx, err := decoder.Decode(decoded)
+		//if err != nil {
+		//	log.Logger.Error.Println("decoder.Decode(txs) Failed : ", err)
+		//}
+		//log.Logger.Trace.Println("decodedTx", decodedTx)
+	}
 
-	// var decoder decode.Decoder
-	// decodedTx, err := decoder.Decode(decoded)
-	// if err != nil {
-	// 	log.Logger.Error.Println("decoder.Decode(txs) Failed : ", err)
-	// }
-	// log.Logger.Trace.Println("decodedTx", decodedTx)
-	// }
-
-	// log.Logger.Trace.Println(len(txs))
-
-	// log.Logger.Trace.Println("string(txs)", string(txs))
-	// log.Logger.Trace.Println("txs", txs)
+	//log.Logger.Trace.Println(len(txs))
+	//
+	//log.Logger.Trace.Println("string(txs)", string(txs))
+	//log.Logger.Trace.Println("txs", txs)
 }
 func GetBlockByHeightByHTTP(chain models.ChainInfo, height int) (models.BlockJSON, error) {
 	strheight := strconv.Itoa(height)
