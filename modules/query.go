@@ -5,11 +5,23 @@ import (
 	"encoding/json"
 	"strconv"
 
+	"cosmossdk.io/x/circuit"
+	"cosmossdk.io/x/evidence"
+	"cosmossdk.io/x/upgrade"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
+	"github.com/cosmos/cosmos-sdk/x/auth"
+	authz "github.com/cosmos/cosmos-sdk/x/authz/module"
+	"github.com/cosmos/cosmos-sdk/x/bank"
+	"github.com/cosmos/cosmos-sdk/x/distribution"
+	"github.com/cosmos/cosmos-sdk/x/gov"
+	"github.com/cosmos/cosmos-sdk/x/mint"
+	"github.com/cosmos/cosmos-sdk/x/slashing"
+	"github.com/cosmos/cosmos-sdk/x/staking"
 
-	sdktx "github.com/cosmos/cosmos-sdk/types/tx"
-	gaia "github.com/cosmos/gaia/v15/app"
+	"github.com/cosmos/cosmos-sdk/types/module/testutil"
+
+	// gaia "github.com/cosmos/gaia/v15/app"
 	"github.com/go-resty/resty/v2"
 
 	"github.com/stakescanpoc/log"
@@ -27,7 +39,7 @@ func connectHTTP(RPC, connectURL string) (*resty.Response, error) {
 	}
 	return res, nil
 }
-func GetBlockByHeight(RPC string, height int64) (*coretypes.ResultBlock, error) {
+func GetBlockByHeightByRPC(RPC string, height int64) (*coretypes.ResultBlock, error) {
 	rpcClient, err := rpchttp.New(RPC, "/websocket")
 	if err != nil {
 		log.Logger.Error.Println("connectRPC Failed : ", err)
@@ -42,45 +54,77 @@ func GetBlockByHeight(RPC string, height int64) (*coretypes.ResultBlock, error) 
 	return results, nil
 }
 
-func TxFinder(result *coretypes.ResultBlock) {
-	encCfg := gaia.RegisterEncodingConfig()
+func TxFinder(result *coretypes.ResultBlock) ([]map[string]interface{}, error) {
+	encCfg := testutil.MakeTestEncodingConfig(
+		staking.AppModuleBasic{},
+		distribution.AppModuleBasic{},
+		auth.AppModuleBasic{},
+		bank.AppModuleBasic{},
+		slashing.AppModuleBasic{},
+		mint.AppModuleBasic{},
+		gov.AppModuleBasic{},
+		upgrade.AppModuleBasic{},
+		authz.AppModuleBasic{},
+		evidence.AppModuleBasic{},
+		circuit.AppModuleBasic{},
+		// accounts.AppModuleBasic{},
+		// feegrant.AppModuleBasic{},
+		// group.AppModuleBasic{},
+		// nft.AppModuleBasic{},
+		// consensusparam.AppModuleBasic{},
+		// pool.AppModuleBasic{},
+		// epochs.AppModuleBasic{},
+		// Add more modules you'd like to
+	)
 	txCfg := encCfg.TxConfig
+	var txsJSON []map[string]interface{}
 	for _, txBytes := range result.Block.Data.Txs {
 		tx, err := txCfg.TxDecoder()(txBytes)
 		if err != nil {
 			log.Logger.Error.Println("TxDecoder Failed : ", err)
+			return nil, err
 		}
 		txJSON, err := txCfg.TxJSONEncoder()(tx)
 		if err != nil {
 			log.Logger.Error.Println("TxJSONEncoder Failed : ", err)
+			return nil, err
 		}
-		log.Logger.Trace.Println("txBytes", txBytes)
-		log.Logger.Trace.Println("tx", tx)
-		log.Logger.Trace.Println("txJSON", txJSON)
-		sdkTx := tx.(interface {
-			GetProtoTx() *sdktx.Tx
-		}).GetProtoTx()
-		_ = sdkTx // use it
-
-		//// Base64 디코딩
-		//decoded, err := base64.StdEncoding.DecodeString(strings.Split(sdkTx.String(), "Tx{")[0])
-		//if err != nil {
-		//	log.Logger.Error.Println("base64 디코딩 실패:", err)
-		//}
-		//
-		//var decoder decode.Decoder
-		//decodedTx, err := decoder.Decode(decoded)
-		//if err != nil {
-		//	log.Logger.Error.Println("decoder.Decode(txs) Failed : ", err)
-		//}
-		//log.Logger.Trace.Println("decodedTx", decodedTx)
+		var JSON map[string]interface{}
+		err = json.Unmarshal(txJSON, &JSON)
+		if err != nil {
+			log.Logger.Error.Println("JSON Unmarshal Failed : ", err)
+			return nil, err
+		}
+		txsJSON = append(txsJSON, JSON)
+		log.Logger.Trace.Println("JSON", JSON)
+		// sdkTx := tx.(interface {
+		// 	GetProtoTx() *sdktx.Tx
+		// }).GetProtoTx()
+		// _ = sdkTx // use it
 	}
-
-	//log.Logger.Trace.Println(len(txs))
-	//
-	//log.Logger.Trace.Println("string(txs)", string(txs))
-	//log.Logger.Trace.Println("txs", txs)
+	return txsJSON, nil
 }
+
+func GetBlockResultsByRPC(RPC string, height int64) (*coretypes.ResultBlockResults, error) {
+	rpcClient, err := rpchttp.New(RPC, "/websocket")
+	if err != nil {
+		log.Logger.Error.Println("connectRPC Failed : ", err)
+		return nil, err
+	}
+	results, err := rpcClient.BlockResults(context.Background(), &height)
+	if err != nil {
+		log.Logger.Error.Println("GetBlockByHeight Failed : ", err)
+		return nil, err
+	}
+	return results, nil
+}
+
+func EventFinder(results *coretypes.ResultBlockResults) {
+	// log.Logger.Trace.Println("BlockResults", results)
+	log.Logger.Trace.Println("results.FinalizeBlockEvents", results.FinalizeBlockEvents)
+	log.Logger.Trace.Println("results.TxsResults", results.TxsResults)
+}
+
 func GetBlockByHeightByHTTP(chain models.ChainInfo, height int) (models.BlockJSON, error) {
 	strheight := strconv.Itoa(height)
 	var blockJSON models.BlockJSON
@@ -97,7 +141,7 @@ func GetBlockByHeightByHTTP(chain models.ChainInfo, height int) (models.BlockJSO
 	return blockJSON, nil
 }
 
-func GetBlockResults(chain models.ChainInfo, height int) (models.BlockResultsJSON, error) {
+func GetBlockResultsByHttp(chain models.ChainInfo, height int) (models.BlockResultsJSON, error) {
 	var blockResultsJSON models.BlockResultsJSON
 	strheight := strconv.Itoa(height)
 	res, err := connectHTTP(chain.RPC, "/block_results?height="+strheight)
