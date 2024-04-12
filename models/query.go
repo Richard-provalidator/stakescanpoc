@@ -185,3 +185,25 @@ type ConsensusParamUpdates struct {
 // 	ValidatorUpdates      interface{}           `json:"validator_updates"`
 // 	ConsensusParamUpdates ConsensusParamUpdates `json:"consensus_param_updates"`
 // }
+
+type Event struct {
+	Type       string           `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Attributes []EventAttribute `protobuf:"bytes,2,rep,name=attributes,proto3" json:"attributes,omitempty"`
+}
+
+type EventAttribute struct {
+	Key   string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Index bool   `protobuf:"varint,3,opt,name=index,proto3" json:"index,omitempty"`
+}
+
+type ExecTxResult struct {
+	Code      uint32  `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	Data      []byte  `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	Log       string  `protobuf:"bytes,3,opt,name=log,proto3" json:"log,omitempty"`
+	Info      string  `protobuf:"bytes,4,opt,name=info,proto3" json:"info,omitempty"`
+	GasWanted int64   `protobuf:"varint,5,opt,name=gas_wanted,proto3" json:"gas_wanted,omitempty"`
+	GasUsed   int64   `protobuf:"varint,6,opt,name=gas_used,proto3" json:"gas_used,omitempty"`
+	Events    []Event `protobuf:"bytes,7,rep,name=events,proto3" json:"events,omitempty"`
+	Codespace string  `protobuf:"bytes,8,opt,name=codespace,proto3" json:"codespace,omitempty"`
+}

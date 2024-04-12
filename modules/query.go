@@ -8,8 +8,11 @@ import (
 	"cosmossdk.io/x/circuit"
 	"cosmossdk.io/x/evidence"
 	"cosmossdk.io/x/upgrade"
+	abcitypes "github.com/cometbft/cometbft/abci/types"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
+	cmttypes "github.com/cometbft/cometbft/types"
+	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	authz "github.com/cosmos/cosmos-sdk/x/authz/module"
 	"github.com/cosmos/cosmos-sdk/x/bank"
@@ -77,22 +80,13 @@ func TxFinder(result *coretypes.ResultBlock) ([]map[string]interface{}, error) {
 		// Add more modules you'd like to
 	)
 	txCfg := encCfg.TxConfig
+	var txs cmttypes.Txs
 	var txsJSON []map[string]interface{}
 	for _, txBytes := range result.Block.Data.Txs {
-		tx, err := txCfg.TxDecoder()(txBytes)
+		txs = append(txs, txBytes)
+		JSON, err := txJSONMaker(txCfg, txBytes)
 		if err != nil {
-			log.Logger.Error.Println("TxDecoder Failed : ", err)
-			return nil, err
-		}
-		txJSON, err := txCfg.TxJSONEncoder()(tx)
-		if err != nil {
-			log.Logger.Error.Println("TxJSONEncoder Failed : ", err)
-			return nil, err
-		}
-		var JSON map[string]interface{}
-		err = json.Unmarshal(txJSON, &JSON)
-		if err != nil {
-			log.Logger.Error.Println("JSON Unmarshal Failed : ", err)
+			log.Logger.Error.Println("txJSONMaker Failed : ", err)
 			return nil, err
 		}
 		txsJSON = append(txsJSON, JSON)
@@ -103,6 +97,26 @@ func TxFinder(result *coretypes.ResultBlock) ([]map[string]interface{}, error) {
 		// _ = sdkTx // use it
 	}
 	return txsJSON, nil
+}
+
+func txJSONMaker(txCfg client.TxConfig, txBytes cmttypes.Tx) (map[string]interface{}, error) {
+	var JSON map[string]interface{}
+	tx, err := txCfg.TxDecoder()(txBytes)
+	if err != nil {
+		log.Logger.Error.Println("TxDecoder Failed : ", err)
+		return nil, err
+	}
+	txJSON, err := txCfg.TxJSONEncoder()(tx)
+	if err != nil {
+		log.Logger.Error.Println("TxJSONEncoder Failed : ", err)
+		return nil, err
+	}
+	err = json.Unmarshal(txJSON, &JSON)
+	if err != nil {
+		log.Logger.Error.Println("JSON Unmarshal Failed : ", err)
+		return nil, err
+	}
+	return JSON, nil
 }
 
 func GetBlockResultsByRPC(RPC string, height int64) (*coretypes.ResultBlockResults, error) {
@@ -119,10 +133,32 @@ func GetBlockResultsByRPC(RPC string, height int64) (*coretypes.ResultBlockResul
 	return results, nil
 }
 
-func EventFinder(results *coretypes.ResultBlockResults) {
+func EventFinder(results *coretypes.ResultBlockResults) ([]abcitypes.Event, []*abcitypes.ExecTxResult) {
 	// log.Logger.Trace.Println("BlockResults", results)
-	log.Logger.Trace.Println("results.FinalizeBlockEvents", results.FinalizeBlockEvents)
-	log.Logger.Trace.Println("results.TxsResults", results.TxsResults)
+	var events []abcitypes.Event
+	var execTxResults []*abcitypes.ExecTxResult
+	for _, finalizeBlockEvent := range results.FinalizeBlockEvents {
+		events = append(events, finalizeBlockEvent)
+	}
+	for _, txsResult := range results.TxsResults {
+		execTxResults = append(execTxResults, txsResult)
+		for i, event := range txsResult.Events {
+			log.Logger.Trace.Println("txsResult.Event", i, event)
+		}
+	}
+	return events, execTxResults
+}
+
+func GetBeginBlockEvent(chain models.ChainInfo) {
+
+}
+
+func GetEndBlockEvent() {
+
+}
+
+func GetTXEvent() {
+
 }
 
 func GetBlockByHeightByHTTP(chain models.ChainInfo, height int) (models.BlockJSON, error) {
@@ -153,16 +189,4 @@ func GetBlockResultsByHttp(chain models.ChainInfo, height int) (models.BlockResu
 	json.Unmarshal(res.Body(), &blockResultsJSON)
 	log.Logger.Trace.Println("GetBlockResults ", result)
 	return blockResultsJSON, nil
-}
-
-func GetBeginBlockEvent(chain models.ChainInfo) {
-
-}
-
-func GetEndBlockEvent() {
-
-}
-
-func GetTXEvent() {
-
 }
