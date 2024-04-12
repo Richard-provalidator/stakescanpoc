@@ -173,7 +173,19 @@ func AddrMaper(events []abcitypes.Event) {
 				models.UpdateAddress(receiveAccount, receiveAmount.Add(amount).String())
 				models.UpdateAddress(sendAccount, sendAmount.Sub(amount).String())
 			}
-
+		case "tx":
+			for _, attribute := range event.Attributes {
+				var sendAccount string
+				var amount decimal.Decimal
+				switch attribute.Key {
+				case "fee_payer":
+					sendAccount = attribute.Value
+				case "fee":
+					amount, _ = decimal.NewFromString(attribute.Value)
+				}
+				sendAmount := AmountFinder(sendAccount)
+				models.UpdateAddress(sendAccount, sendAmount.Sub(amount).String())
+			}
 		}
 	}
 }
