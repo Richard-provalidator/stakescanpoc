@@ -28,6 +28,16 @@ func ConnectDatabase() {
 	}
 }
 
+func GetAddress() {
+	//현재 있는 모든 어드레스 가져옴
+}
+
+func UpdateAddress(address, amount string) {
+	//addr 없으면 추가
+
+	//addr 있으면 업데이트
+}
+
 // // 밸리데이터 정보를 db에 저장하는 펑션
 // func InsertValidatorsInfo(validators Validators) error {
 // 	var todayvalidators []Validators

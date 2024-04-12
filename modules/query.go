@@ -21,6 +21,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/mint"
 	"github.com/cosmos/cosmos-sdk/x/slashing"
 	"github.com/cosmos/cosmos-sdk/x/staking"
+	"github.com/shopspring/decimal"
 
 	"github.com/cosmos/cosmos-sdk/types/module/testutil"
 
@@ -147,6 +148,43 @@ func EventFinder(results *coretypes.ResultBlockResults) ([]abcitypes.Event, []*a
 		}
 	}
 	return events, execTxResults
+}
+
+func AddrMaper(events []abcitypes.Event) {
+	for _, event := range events {
+		switch event.Type {
+		case "transfer":
+			for _, attribute := range event.Attributes {
+				var receiveAccount string
+				var sendAccount string
+				var amount decimal.Decimal
+				switch attribute.Key {
+				case "recipient":
+					receiveAccount = attribute.Value
+				case "sender":
+					sendAccount = attribute.Value
+				case "amount":
+					amount, _ = decimal.NewFromString(attribute.Value)
+				}
+				receiveAmount := AmountFinder(receiveAccount)
+				sendAmount := AmountFinder(sendAccount)
+				receiveAmount.Add(amount)
+				sendAmount.Sub(amount)
+				models.UpdateAddress(receiveAccount, receiveAmount.Add(amount).String())
+				models.UpdateAddress(sendAccount, sendAmount.Sub(amount).String())
+			}
+
+		}
+	}
+}
+
+func AmountFinder(account string) decimal.Decimal {
+	var amount decimal.Decimal
+	if account == models.Account.Address {
+		amountstr := models.Account.Amount
+		amount, _ = decimal.NewFromString(amountstr)
+	}
+	return amount
 }
 
 func GetBeginBlockEvent(chain models.ChainInfo) {
