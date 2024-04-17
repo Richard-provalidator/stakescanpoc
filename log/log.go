@@ -16,11 +16,11 @@ type Loggers struct {
 	Error *log.Logger
 }
 
-var Logger Loggers
+// var Logger Loggers
 
-func LogInit() {
+func (Logger *Loggers) LogInit(rootPath string) {
 	// 로그 파일 열기 또는 생성 (기존 로그는 덮어쓰기)
-	logDir := os.Getenv("ROOT_PATH") + "/log"
+	logDir := rootPath + "/log"
 	logFileName := getLogFileName()
 	logFile, err := os.OpenFile(logDir+"/"+logFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 

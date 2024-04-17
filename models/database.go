@@ -1,32 +1,12 @@
 package models
 
-import (
-	"github.com/stakescanpoc/log"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
-)
+// import (
+// 	"github.com/stakescanpoc/log"
+// 	"gorm.io/driver/mysql"
+// 	"gorm.io/gorm"
+// )
 
-var DB *gorm.DB
-var DbStr string
-
-func ConnectDatabase() {
-	var err error
-	DB, err = gorm.Open(mysql.New(mysql.Config{
-		DSN:                       Config.Database.MysqlUserID + ":" + Config.Database.MysqlUserPW + "@tcp(" + Config.Database.MysqlServerURL + ":" + Config.Database.MysqlServerPort + ")/" + Config.Database.MysqlSelectDBName + "?charset=utf8mb4&parseTime=true",
-		DefaultStringSize:         256,   // default size for string fields
-		DisableDatetimePrecision:  true,  // disable datetime precision, which not supported before MySQL 5.6
-		DontSupportRenameIndex:    true,  // drop & create when rename index, rename index not supported before MySQL 5.7, MariaDB
-		DontSupportRenameColumn:   true,  // `change` when rename column, rename column not supported before MySQL 8, MariaDB
-		SkipInitializeWithVersion: false, // auto configure based on currently MySQL version
-	}), &gorm.Config{})
-
-	// DbStr = os.Getenv("MYSQL_USER_ID") + ":" + os.Getenv("MYSQL_USER_PW") + "@tcp(" + os.Getenv("MYSQL_SERVER_URL") + ":" + os.Getenv("MYSQL_SERVER_PORT") + ")/" + os.Getenv("MYSQL_SELECT_DB_NAME") + "?charset=utf8mb4&parseTime=true"
-	// DB, err = gorm.Open("mysql", DbStr)
-
-	if err != nil {
-		log.Logger.Error.Fatal("Connect Database failed: ", err)
-	}
-}
+// var DB *gorm.DB
 
 func GetAddress() {
 	//현재 있는 모든 어드레스 가져옴

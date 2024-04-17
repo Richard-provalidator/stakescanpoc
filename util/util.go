@@ -6,24 +6,147 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 
-	"github.com/go-resty/resty/v2"
 	"github.com/stakescanpoc/log"
-	"github.com/stakescanpoc/models"
+	"google.golang.org/grpc"
 	"gopkg.in/yaml.v2"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
-var DirsMap map[string]string
+type Config struct {
+	Telegram  Telegram    `yaml:"TELEGRAM"`
+	Database  Database    `yaml:"DATABASE"`
+	ChainInfo []ChainInfo `yaml:"CHAIN_INFO"`
+}
 
-func GetDirs() {
+type Telegram struct {
+	BotName     string `yaml:"BOT_NAME"`
+	BotToken    string `yaml:"BOT_TOKEN"`
+	ChatID      int    `yaml:"CHAT_ID"`
+	ChatIDAdmin int    `yaml:"CHAT_ID_ADMIN"`
+}
+
+type Database struct {
+	MysqlServerURL    string `yaml:"MYSQL_SERVER_URL"`
+	MysqlServerPort   string `yaml:"MYSQL_SERVER_PORT"`
+	MysqlUserID       string `yaml:"MYSQL_USER_ID"`
+	MysqlUserPW       string `yaml:"MYSQL_USER_PW"`
+	MysqlSelectDBName string `yaml:"MYSQL_SELECT_DB_NAME"`
+}
+
+type ChainInfo struct {
+	ChainName        string  `yaml:"CHAIN_NAME"`
+	RPC              string  `yaml:"RPC"`
+	LCD              string  `yaml:"LCD"`
+	ValidatorAddress string  `yaml:"VALIDATOR_ADDRESS"`
+	PrivKey          string  `yaml:"PRIV_KEY"`
+	EX               string  `yaml:"EX"`
+	Denom            string  `yaml:"DENOM"`
+	LeastAmount      float64 `yaml:"LEAST_AMOUNT"`
+	Decimal          float64 `yaml:"DECIMAL"`
+	Rate             float64 `yaml:"RATE"`
+	Conn             *grpc.ClientConn
+}
+
+type Context struct {
+	Config  Config
+	DB      *gorm.DB
+	Logger  log.Loggers
+	DirsMap map[string]string
+}
+
+func NewContext() Context {
+	var context Context
+	return context
+}
+
+func (ctx *Context) InitContext() {
+	rootPath := ctx.GetRootPath()
+	ctx.Logger.LogInit(rootPath)
+	ctx.initConfig(rootPath)
+}
+
+func (ctx Context) GetRootPath() string {
+	// Get the absolute path of the current working directory.
+	dir, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	for {
+		// Check if a go.mod file exists in the current directory.
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+
+		// Move up one directory.
+		parentDir := filepath.Dir(dir)
+
+		// If we've reached the root directory ("/"), exit the loop.
+		if parentDir == dir {
+			break
+		}
+
+		// Continue searching in the parent directory.
+		dir = parentDir
+	}
+
+	return ""
+}
+
+func (ctx *Context) initConfig(rootPath string) {
+	// yaml
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		ctx.LoadYaml(rootPath + "/config/local.yaml")
+		ctx.Logger.Trace.Println("local.yaml")
+	} else {
+		ctx.LoadYaml(rootPath + "/config/prod.yaml")
+		ctx.Logger.Trace.Println("prod.yaml")
+	}
+	ctx.GetDirs()
+	ctx.ConnectDatabase()
+}
+
+// Import Yaml Files
+// ex)
+// yamlName : local.env , prod.env
+func (ctx *Context) LoadYaml(yamlName string) {
+	yamlFile, _ := os.ReadFile(yamlName)
+	err := yaml.Unmarshal(yamlFile, &ctx.Config)
+
+	if err != nil {
+		ctx.Logger.Error.Fatal("Error loading "+yamlName, err)
+	}
+}
+
+// var DirsMap map[string]string
+func (ctx *Context) GetDirs() {
 	rootDir := GetRootPath()
-	DirsMap = make(map[string]string)
-	for _, chain := range models.Config.ChainInfo {
+	ctx.DirsMap = make(map[string]string)
+	for _, chain := range ctx.Config.ChainInfo {
 		lowerChainName := strings.ToLower(chain.ChainName)
-		DirsMap[chain.ChainName+"txsDir"] = rootDir + "/txs/" + lowerChainName + "/"
-		DirsMap["csvDir"] = rootDir + "/csv/"
-		DirsMap["modulesDir"] = rootDir + "/modules/"
+		ctx.DirsMap[chain.ChainName+"txsDir"] = rootDir + "/txs/" + lowerChainName + "/"
+		ctx.DirsMap["csvDir"] = rootDir + "/csv/"
+		ctx.DirsMap["modulesDir"] = rootDir + "/modules/"
+	}
+}
+
+func (ctx *Context) ConnectDatabase() {
+	var err error
+	ctx.DB, err = gorm.Open(mysql.New(mysql.Config{
+		DSN:                       ctx.Config.Database.MysqlUserID + ":" + ctx.Config.Database.MysqlUserPW + "@tcp(" + ctx.Config.Database.MysqlServerURL + ":" + ctx.Config.Database.MysqlServerPort + ")/" + ctx.Config.Database.MysqlSelectDBName + "?charset=utf8mb4&parseTime=true",
+		DefaultStringSize:         256,   // default size for string fields
+		DisableDatetimePrecision:  true,  // disable datetime precision, which not supported before MySQL 5.6
+		DontSupportRenameIndex:    true,  // drop & create when rename index, rename index not supported before MySQL 5.7, MariaDB
+		DontSupportRenameColumn:   true,  // `change` when rename column, rename column not supported before MySQL 8, MariaDB
+		SkipInitializeWithVersion: false, // auto configure based on currently MySQL version
+	}), &gorm.Config{})
+
+	// DbStr = os.Getenv("MYSQL_USER_ID") + ":" + os.Getenv("MYSQL_USER_PW") + "@tcp(" + os.Getenv("MYSQL_SERVER_URL") + ":" + os.Getenv("MYSQL_SERVER_PORT") + ")/" + os.Getenv("MYSQL_SELECT_DB_NAME") + "?charset=utf8mb4&parseTime=true"
+	// DB, err = gorm.Open("mysql", DbStr)
+
+	if err != nil {
+		ctx.Logger.Error.Fatal("Connect Database failed: ", err)
 	}
 }
 
@@ -41,78 +164,63 @@ func MakeQueryString(paramPairs url.Values) string {
 	return queryParams
 }
 
-/*
-	URL 호출
-	ex)
-	CallURL(URL) : 2sec (default)
-	CallURL(URL,  10) : 10sec time out
+// /*
+// 	URL 호출
+// 	ex)
+// 	CallURL(URL) : 2sec (default)
+// 	CallURL(URL,  10) : 10sec time out
 
-*
-*/
-func CallURL(URL string, sec ...int) (string, error) {
-	timeout := 2 * time.Second
+// *
+// */
+// func CallURL(URL string, sec ...int) (string, error) {
+// 	timeout := 2 * time.Second
 
-	if len(sec) > 0 {
-		timeout = time.Duration(sec[0]) * time.Second
-	}
-	client := resty.New()
-	client.SetHeader("Accept", "application/json")
-	client.SetTimeout(timeout) // timeout check
-	client.SetHeaders(map[string]string{
-		"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
-	})
-	req, err := client.R().EnableTrace().Get(URL)
-	if err != nil {
-		log.Logger.Error.Println("Call URL Failed: ", err)
-		return "", err
-	}
+// 	if len(sec) > 0 {
+// 		timeout = time.Duration(sec[0]) * time.Second
+// 	}
+// 	client := resty.New()
+// 	client.SetHeader("Accept", "application/json")
+// 	client.SetTimeout(timeout) // timeout check
+// 	client.SetHeaders(map[string]string{
+// 		"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+// 	})
+// 	req, err := client.R().EnableTrace().Get(URL)
+// 	if err != nil {
+// 		log.Logger.Error.Println("Call URL Failed: ", err)
+// 		return "", err
+// 	}
 
-	return string(req.Body()), nil
-}
+// 	return string(req.Body()), nil
+// }
 
-// Import Yaml Files
-// ex)
-// yamlName : local.env , prod.env
-func LoadYaml(yamlName string) {
-	yamlFile, _ := os.ReadFile(yamlName)
-	err := yaml.Unmarshal(yamlFile, &models.Config)
-	//err := godotenv.Load(yamlName)
+// // Init
+// // 로그, 설정파일 , db 세팅
+// // ex) Init() 현재 폴더의 위치에 따라서 숫자를 넣어줌. 기본값은 안넣어도됨
+// // 폴더 하나를 들어가는 경우 Init(1)로 실행
+// func Init() {
+// 	rootPath := GetRootPath()
+// 	os.Setenv("ROOT_PATH", rootPath) //logger 에서 필요
 
-	if err != nil {
-		log.Logger.Error.Fatal("Error loading "+yamlName, err)
-	}
+// 	// logger Init
+// 	log.LogInit()
 
-	// log.Logger.Trace.Println(envName)
-}
+// 	// env
+// 	// yaml
+// 	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+// 		LoadYaml(rootPath + "/config/local.yaml")
+// 		log.Logger.Trace.Println("local.yaml")
+// 	} else {
+// 		LoadYaml(rootPath + "/config/prod.yaml")
+// 		log.Logger.Trace.Println("prod.yaml")
+// 	}
+// 	// log.Logger.Trace.Println("runtime.GOOS", runtime.GOOS)
 
-// Init
-// 로그, 설정파일 , db 세팅
-// ex) Init() 현재 폴더의 위치에 따라서 숫자를 넣어줌. 기본값은 안넣어도됨
-// 폴더 하나를 들어가는 경우 Init(1)로 실행
-func Init() {
-	rootPath := GetRootPath()
-	os.Setenv("ROOT_PATH", rootPath) //logger 에서 필요
+// 	// get Dirs
+// 	GetDirs()
+// 	// DB
+// 	models.ConnectDatabase()
 
-	// logger Init
-	log.LogInit()
-
-	// env
-	// yaml
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		LoadYaml(rootPath + "/config/local.yaml")
-		log.Logger.Trace.Println("local.yaml")
-	} else {
-		LoadYaml(rootPath + "/config/prod.yaml")
-		log.Logger.Trace.Println("prod.yaml")
-	}
-	// log.Logger.Trace.Println("runtime.GOOS", runtime.GOOS)
-
-	// get Dirs
-	GetDirs()
-	// DB
-	models.ConnectDatabase()
-
-}
+// }
 
 // 루트 폴더 절대경로를 얻어 올 때 필요
 func GetRootPath() string {
