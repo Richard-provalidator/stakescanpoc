@@ -1,6 +1,7 @@
 package log
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -18,14 +19,14 @@ type Loggers struct {
 
 // var Logger Loggers
 
-func (Logger *Loggers) LogInit(rootPath string) {
+func LogInit(rootPath string) (Loggers, error) {
+	var Logger Loggers
 	// 로그 파일 열기 또는 생성 (기존 로그는 덮어쓰기)
 	logDir := rootPath + "/log"
 	logFileName := getLogFileName()
 	logFile, err := os.OpenFile(logDir+"/"+logFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-
 	if err != nil {
-		log.Fatal("Cannot create log file:", err)
+		return Logger, fmt.Errorf("os.OpenFile: %w", err)
 	}
 
 	// 로그 레벨 및 포맷 설정
@@ -41,6 +42,7 @@ func (Logger *Loggers) LogInit(rootPath string) {
 	Logger.Info = log.New(logWriter, "[INFO] ", log.Ldate|log.Ltime|log.Lshortfile)
 	Logger.Warn = log.New(logWriter, "[WARNING] ", log.Ldate|log.Ltime|log.Lshortfile)
 	Logger.Error = log.New(logWriter, "[ERROR] ", log.Ldate|log.Ltime|log.Lshortfile)
+	return Logger, nil
 }
 
 func getLogFileName() string {
