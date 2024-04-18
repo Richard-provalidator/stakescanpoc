@@ -30,7 +30,7 @@ import (
 //		return res, nil
 //	}
 
-func GetBlockByHeightByRPC(RPC string, height int64) (*coretypes.ResultBlock, error) {
+func GetBlockByHeightFromRPC(RPC string, height int64) (*coretypes.ResultBlock, error) {
 	rpcClient, err := rpchttp.New(RPC, "/websocket")
 	if err != nil {
 		// log.Logger.Error.Println("connectRPC Failed : ", err)
@@ -147,7 +147,7 @@ func txJSONMaker(txCfg client.TxConfig, txBytes cmttypes.Tx) (map[string]interfa
 	return JSON, nil
 }
 
-func GetBlockResultsByRPC(RPC string, height int64) (*coretypes.ResultBlockResults, error) {
+func GetBlockResultsFromRPC(RPC string, height int64) (*coretypes.ResultBlockResults, error) {
 	rpcClient, err := rpchttp.New(RPC, "/websocket")
 	if err != nil {
 		// log.Logger.Error.Println("connectRPC Failed : ", err)
