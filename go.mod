@@ -136,8 +136,8 @@ replace (
 	// "github.com/cosmos/gaia/v15/app" => "github.com/cosmos/gaia/app" v15.2.0
 	// Use cosmos keyring
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
-	github.com/coinbase/rosetta-sdk-go/types => github.com/coinbase/mesh-sdk-go/types v1.0.0
-	github.com/coinbase/rosetta-sdk-go@v0.7.9/types => github.com/coinbase/mesh-sdk-go/types v1.0.0
+	//github.com/coinbase/rosetta-sdk-go/types => github.com/coinbase/mesh-sdk-go/types v1.0.0
+	//github.com/coinbase/rosetta-sdk-go@v0.7.9/types => github.com/coinbase/mesh-sdk-go/types v1.0.0
 
 	// Use special SDK v0.47.x release with support for both ICS and LSM
 	github.com/cosmos/cosmos-sdk => github.com/cosmos/cosmos-sdk v0.47.10-ics-lsm
@@ -171,18 +171,18 @@ replace (
 // pgregory.net/rapid => pgregory.net/rapid v0.5.5
 )
 
-retract (
-	// revert fix https://github.com/cosmos/cosmos-sdk/pull/16331
-	v0.46.12
-	// subject to a bug in the group module and gov module migration
-	[v0.46.5, v0.46.6]
-	// subject to the dragonberry vulnerability
-	// and/or the bank coin metadata migration issue
-	[v0.46.0, v0.46.4]
-	// subject to the dragonberry vulnerability
-	[v0.45.0, v0.45.8]
-	// do not use
-	v0.43.0
-	// github.com/coinbase/rosetta-sdk-go v0.7.9
-	v0.7.9
-)
+//retract (
+//	// revert fix https://github.com/cosmos/cosmos-sdk/pull/16331
+//	v0.46.12
+//	// subject to a bug in the group module and gov module migration
+//	[v0.46.5, v0.46.6]
+//	// subject to the dragonberry vulnerability
+//	// and/or the bank coin metadata migration issue
+//	[v0.46.0, v0.46.4]
+//	// subject to the dragonberry vulnerability
+//	[v0.45.0, v0.45.8]
+//	// do not use
+//	v0.43.0
+//	// github.com/coinbase/rosetta-sdk-go v0.7.9
+//	v0.7.9
+//)

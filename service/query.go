@@ -13,7 +13,7 @@ import (
 
 	"github.com/shopspring/decimal"
 
-	// gaia "github.com/cosmos/gaia/v15/app"
+	gaia "github.com/cosmos/gaia/v15/app"
 
 	"github.com/stakescanpoc/models"
 )
@@ -100,29 +100,29 @@ func GetBlockByHeightFromRPC(RPC string, height int64) (*coretypes.ResultBlock, 
 // 	return txsJSON, nil
 // }
 
-// func FindTx(result *coretypes.ResultBlock) ([]map[string]interface{}, error) {
-// 	encCfg := gaia.RegisterEncodingConfig()
-// 	txCfg := encCfg.TxConfig
-// 	var txs cmttypes.Txs
-// 	var txsJSON []map[string]interface{}
-// 	for _, txBytes := range result.Block.Data.Txs {
-// 		txs = append(txs, txBytes)
-// 		JSON, err := txJSONMaker(txCfg, txBytes)
-// 		if err != nil {
-// 			// log.Logger.Error.Println("txJSONMaker Failed : ", err)
-// 			fmt.Println("txJSONMaker Failed : ", err)
-// 			return nil, err
-// 		}
-// 		txsJSON = append(txsJSON, JSON)
-// 		// log.Logger.Trace.Println("JSON", JSON)
-// 		fmt.Println("JSON", JSON)
-// 		// sdkTx := tx.(interface {
-// 		// 	GetProtoTx() *sdktx.Tx
-// 		// }).GetProtoTx()
-// 		// _ = sdkTx // use it
-// 	}
-// 	return txsJSON, nil
-// }
+func FindTx(result *coretypes.ResultBlock) ([]map[string]interface{}, error) {
+	encCfg := gaia.RegisterEncodingConfig()
+	txCfg := encCfg.TxConfig
+	var txs cmttypes.Txs
+	var txsJSON []map[string]interface{}
+	for _, txBytes := range result.Block.Data.Txs {
+		txs = append(txs, txBytes)
+		JSON, err := txJSONMaker(txCfg, txBytes)
+		if err != nil {
+			// log.Logger.Error.Println("txJSONMaker Failed : ", err)
+			fmt.Println("txJSONMaker Failed : ", err)
+			return nil, err
+		}
+		txsJSON = append(txsJSON, JSON)
+		// log.Logger.Trace.Println("JSON", JSON)
+		fmt.Println("JSON", JSON)
+		// sdkTx := tx.(interface {
+		// 	GetProtoTx() *sdktx.Tx
+		// }).GetProtoTx()
+		// _ = sdkTx // use it
+	}
+	return txsJSON, nil
+}
 
 func txJSONMaker(txCfg client.TxConfig, txBytes cmttypes.Tx) (map[string]interface{}, error) {
 	var JSON map[string]interface{}
