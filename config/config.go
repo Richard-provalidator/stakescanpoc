@@ -20,7 +20,7 @@ type Context struct {
 	DirsMap    map[string]string
 }
 
-func InitConfig() (Context, log.Loggers, error) {
+func InitContext() (Context, log.Loggers, error) {
 	var ctx Context
 
 	rootPath := getRootPath()
@@ -51,7 +51,7 @@ func getRootPath() string {
 	home := os.Getenv("HOME")
 	if home == "" {
 		if runtime.GOOS == "windows" {
-			home = "C:/Users/user/go/src/github.com/stakescanpoc"
+			home = "C:\\Users\\user\\GolandProjects\\stakescanpoc"
 		} else {
 			home = "%HOME/go/src/github.com/stakescanpoc"
 		}

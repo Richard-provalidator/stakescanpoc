@@ -11,6 +11,13 @@ func MakeQueryString(paramPairs url.Values) string {
 	return queryParams
 }
 
+//type Context struct {
+//	ChainInfos []ChainInfo
+//	Telegram   Telegram
+//	DB         *gorm.DB
+//	DirsMap    map[string]string
+//}
+
 // /*
 // 	URL 호출
 // 	ex)

@@ -6,8 +6,6 @@ package models
 // 	"gorm.io/gorm"
 // )
 
-// var DB *gorm.DB
-
 func GetAddress() {
 	//현재 있는 모든 어드레스 가져옴
 }
