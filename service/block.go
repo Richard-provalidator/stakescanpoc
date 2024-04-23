@@ -5,8 +5,8 @@ import (
 	"fmt"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
-	"github.com/stakescanpoc/config"
 	"github.com/stakescanpoc/models"
+	"gorm.io/gorm"
 )
 
 func GetBlockByHeightFromRPC(RPC string, height int64) (*coretypes.ResultBlock, error) {
@@ -26,14 +26,14 @@ func GetBlockByHeightFromRPC(RPC string, height int64) (*coretypes.ResultBlock, 
 	return results, nil
 }
 
-func InsertBlock(ctx config.Context, block *coretypes.ResultBlock) error {
-	dbBlock := models.Blocks{
+func InsertBlock(DB *gorm.DB, block *coretypes.ResultBlock) error {
+	dbBlock := models.Block{
 		Height:                   block.Block.Height,
 		ProposerConsensusAddress: block.Block.ProposerAddress.String(),
 		Block:                    *block.Block,
 		Timestamp:                block.Block.Time,
 	}
-	err := models.InsertBlocks(ctx, dbBlock)
+	err := models.InsertBlocks(DB, dbBlock)
 	if err != nil {
 		return fmt.Errorf("InsertBlocks Failed : %w", err)
 	}

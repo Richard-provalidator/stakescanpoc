@@ -20,66 +20,41 @@ func Test(t *testing.T) {
 		height := int64(20106032)
 		block, err := service.GetBlockByHeightFromRPC(chain.RPC, height)
 		if err != nil {
-			logger.Error.Fatalln("GetBlockByHeightByRPC Failed : ", err)
+			logger.Error.Fatalln("GetBlockByHeightByRPC Failed: ", err)
 		}
-		err = service.InsertBlock(ctx, block)
-		if err != nil {
-			logger.Error.Fatalln("InsertBlock Failed : ", err)
-		}
-
-		txs, err := service.QueryTx(chain.RPC, block)
-		if err != nil {
-			logger.Error.Fatalln("QueryTx Failed : ", err)
-		}
-		err = service.InsertTxs(ctx, txs)
-		if err != nil {
-			logger.Error.Fatalln("InsertTxs Failed : ", err)
-		}
-
-		//_, err = service.FindTx(block)
+		//err = service.InsertBlock(ctx, block)
 		//if err != nil {
-		//	logger.Trace.Fatalln("service.FindTx Failed : ", err)
+		//	logger.Error.Fatalln("InsertBlock Failed: ", err)
 		//}
-		//fmt.Println(txs)
 
-		//for _, tx := range txs {
-		//	dbTx := models.Transactions{
-		//		TxID:        0,
-		//		TxIDX:       0,
-		//		Code:        tx.,
-		//		TxHash:      "",
-		//		Height:      0,
-		//		Messages:    nil,
-		//		MessageType: "",
-		//		Events:      nil,
-		//		GasWanted:   "",
-		//		GasUsed:     "",
-		//	}
+		txs, err := service.QueryTx(ctx.DB, chain, block)
+		if err != nil {
+			logger.Error.Fatalln("QueryTx Failed: ", err)
+		}
+		_ = txs
+		//err = service.InsertTxs(ctx, txs)
+		//if err != nil {
+		//	logger.Error.Fatalln("InsertTxs Failed: ", err)
 		//}
-		// log.Logger.Trace.Println("txs", txs)
-		// 	fmt.Println("txs", txs)
-		// 	BlockResults, err := modules.GetBlockResultsByRPC(chain.RPC, int64(19816165))
-		// 	if err != nil {
-		// 		// log.Logger.Error.Println("GetBlockResultsByRPC Failed : ", err)
-		// 		fmt.Println("GetBlockResultsByRPC Failed : ", err)
-		// 	}
-		// 	modules.EventFinder(BlockResults)
+
+		blockResults, err := service.GetBlockResultsFromRPC(chain.RPC, height)
+		if err != nil {
+			logger.Error.Fatalln("GetBlockResultsFromRPC Failed: ", err)
+		}
+		beginEvents, endEvents := service.FindBlockEvents(blockResults)
+		_ = beginEvents
+		_ = endEvents
+
+		err = service.ChangeBalance(ctx.DB, height, chain.Denom, beginEvents)
+		if err != nil {
+			logger.Error.Fatalln("ChangeBalance Failed: ", err)
+		}
+		err = service.ChangeBalance(ctx.DB, height, chain.Denom, endEvents)
+		if err != nil {
+			logger.Error.Fatalln("ChangeBalance Failed: ", err)
+		}
+		//fmt.Println("beginEvents", beginEvents)
+		//fmt.Println("endEvents", endEvents)
+		//fmt.Println("txsResults", txsResults)
 	}
 }
-
-// for _, chain := range models.Config.ChainInfo {
-// 	Blocks, err := modules.GetBlockByHeightByRPC(chain.RPC, int64(19816165))
-// 	if err != nil {
-// 		log.Logger.Error.Println("GetBlockByHeightByRPC Failed : ", err)
-// 	}
-// 	txs, err := modules.TxFinder(Blocks)
-// 	if err != nil {
-// 		log.Logger.Error.Println("TxFinder Failed : ", err)
-// 	}
-// 	log.Logger.Trace.Println("txs", txs)
-// 	BlockResults, err := modules.GetBlockResultsByRPC(chain.RPC, int64(19816165))
-// 	if err != nil {
-// 		log.Logger.Error.Println("GetBlockResultsByRPC Failed : ", err)
-// 	}
-// 	modules.EventFinder(BlockResults)
-// }

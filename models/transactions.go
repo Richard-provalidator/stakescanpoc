@@ -2,12 +2,11 @@ package models
 
 import (
 	"fmt"
-	"github.com/stakescanpoc/config"
+	"gorm.io/gorm"
 )
 
-func InsertTxs(ctx config.Context, tx Transactions) error {
-	DB := ctx.DB
-	var existTxs []Transactions
+func InsertTxs(DB *gorm.DB, tx Transaction) error {
+	var existTxs []Transaction
 	err := DB.Where("height = ?", tx.Height).Find(&existTxs).Error
 	if err != nil {
 		return fmt.Errorf("DB.Where: %w", err)

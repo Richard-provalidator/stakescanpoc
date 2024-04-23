@@ -363,8 +363,8 @@ func UpdateAddress(address, amount string) {
 // }
 
 // // 체인 proposals 정보 가져오기
-// func GetProposalsInfos() []Proposals {
-// 	var proposals []Proposals
+// func GetProposalsInfos() []Proposal {
+// 	var proposals []Proposal
 // 	sql := `SELECT * FROM cosmos.proposals`
 // 	DB.Raw(sql).Scan(&proposals)
 // 	// log.Logger.Info.Println(proposals)

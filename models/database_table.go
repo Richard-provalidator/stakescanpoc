@@ -9,53 +9,60 @@ import (
 	"time"
 )
 
-type Blocks struct {
+type Block struct {
 	Height                   int64
 	ProposerConsensusAddress string
 	Block                    types.Block
 	Timestamp                time.Time
 }
 
-type Transactions struct {
+type Transaction struct {
 	TxID        int64
 	TxIDX       int
 	Code        uint32
 	TxHash      string
 	Height      int64
-	Messages    tx.MsgResponse
+	Messages    []tx.MsgResponse
 	MessageType string
 	Events      []abcitypes.Event
 	GasWanted   int64
 	GasUsed     int64
 }
-type Messages struct {
-	Type string
-	Msg  interface{}
+
+type Event struct {
+	Type       string
+	Attributes []EventAttribute
 }
+type EventAttribute struct {
+	Key   string
+	Value string
+	Index bool
+}
+
 type MapTransactionAddress struct {
 	TxID  int64
 	AccID int64
 }
 
-type Accounts struct {
+type Account struct {
 	AccID   int64
 	Address string
 }
 
-type Balances struct {
+type Balance struct {
 	Address string
 	Denom   string
 	Amount  string
 	Height  int64
 }
 
-type Assets struct {
+type Asset struct {
 	Denom     string
 	Amount    string
 	ChannelID string
 }
 
-type Validators struct {
+type Validator struct {
 	ConsensusAddress string
 	Address          string
 	Moniker          string
@@ -72,7 +79,7 @@ type ValidatorsSign struct {
 	Height           int64
 }
 
-type Proposals struct {
+type Proposal struct {
 	ProposalID int64
 	Proposal   v1beta1.Proposal
 }

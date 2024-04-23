@@ -3,25 +3,29 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	abcitypes "github.com/cometbft/cometbft/abci/types"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdktx "github.com/cosmos/cosmos-sdk/types/tx"
 	gaia "github.com/cosmos/gaia/v15/app"
 	"github.com/stakescanpoc/config"
 	"github.com/stakescanpoc/models"
+	"gorm.io/gorm"
 )
 
-type Txs struct {
+type TxContext struct {
 	Tx     *sdktx.Tx
-	TxHash string
+	TxMsgs []sdktx.MsgResponse
 	Res    *coretypes.ResultTx
 }
 
-func QueryTx(RPC string, result *coretypes.ResultBlock) ([]Txs, error) {
-	var txs []Txs
+func QueryTx(DB *gorm.DB, chain config.ChainInfo, result *coretypes.ResultBlock) ([]TxContext, error) {
+	var txs []TxContext
+	var txsEvents [][]abcitypes.Event
 	for _, txBytes := range result.Block.Txs {
-		rpcClient, err := rpchttp.New(RPC, "/websocket")
+		rpcClient, err := rpchttp.New(chain.RPC, "/websocket")
 		if err != nil {
 			// log.Logger.Error.Println("connectRPC Failed : ", err)
 			fmt.Println("connectRPC Failed : ", err)
@@ -37,50 +41,96 @@ func QueryTx(RPC string, result *coretypes.ResultBlock) ([]Txs, error) {
 		if err != nil {
 			return nil, fmt.Errorf("encCfg.TxConfig.TxDecoder: %w", err)
 		}
-		txJSON, err := encCfg.TxConfig.TxJSONEncoder()(tx)
-		if err != nil {
-			return nil, fmt.Errorf("encCfg.TxConfig.TxJSONEncoder: %w", err)
-		}
-		var JSON sdktx.MsgResponse
-		err = json.Unmarshal(txJSON, &JSON)
-		if err != nil {
-			// log.Logger.Error.Println("JSON Unmarshal Failed : ", err)
-			fmt.Println("JSON Unmarshal Failed : ", err)
-			return nil, err
-		}
-		fmt.Println("JSON", JSON)
+		//txJSON, err := encCfg.TxConfig.TxJSONEncoder()(tx)
+		//if err != nil {
+		//	return nil, fmt.Errorf("encCfg.TxConfig.TxJSONEncoder: %w", err)
+		//}
 		//fmt.Println(string(txJSON)) // use it
+		var txMsgs []sdktx.MsgResponse
+		msgs := tx.GetMsgs()
+		for _, msg := range msgs {
+			var txMsg sdktx.MsgResponse
+			err = json.Unmarshal(encCfg.Marshaler.MustMarshalJSON(msg), &txMsg)
+			if err != nil {
+				return nil, fmt.Errorf("json.Unmarshal: %w", err)
+			}
+			txMsgs = append(txMsgs, txMsg)
+		}
+
+		fmt.Println(fmt.Sprintf("%x", res.Hash))
 		sdkTx := tx.(interface {
 			GetProtoTx() *sdktx.Tx
 		}).GetProtoTx()
-		//sdkTx.Body.Messages
-		txHash := fmt.Sprintf("%x", txBytes.Hash())
-		txs = append(txs, Txs{
+
+		if res.TxResult.Code == 0 {
+			err = ChangeBalance(DB, result.Block.Height, chain.Denom, res.TxResult.Events)
+			if err != nil {
+				return nil, fmt.Errorf("ChangeBalance: %w", err)
+			}
+		}
+
+		txsEvents = append(txsEvents, res.TxResult.Events)
+		txs = append(txs, TxContext{
 			Tx:     sdkTx,
-			TxHash: txHash,
+			TxMsgs: txMsgs,
 			Res:    res,
 		})
+
+		for _, event := range res.TxResult.Events {
+			for _, attr := range event.Attributes {
+				if attr.Key == "spender" || attr.Key == "receiver" {
+					account := models.Account{Address: attr.Value}
+					err := models.InsertAccounts(DB, account)
+					if errors.Is(err, fmt.Errorf("0")) {
+					} else if err != nil {
+						return nil, fmt.Errorf("models.InsertAccounts: %w", err)
+					}
+					err = InsertMapTxsAddr(DB, fmt.Sprintf("%x", res.Hash), attr.Value)
+					if err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
 	}
 	return txs, nil
 }
 
-func InsertTxs(ctx config.Context, txs []Txs) error {
+func InsertTxs(DB *gorm.DB, txs []TxContext) error {
 	for i, tx := range txs {
-		transaction := models.Transactions{
+		transaction := models.Transaction{
 			TxIDX:       i,
 			Code:        tx.Res.TxResult.Code,
 			TxHash:      fmt.Sprintf("%x", tx.Res.Hash),
 			Height:      tx.Res.Height,
-			Messages:    nil,
+			Messages:    tx.TxMsgs,
 			MessageType: tx.Tx.Body.Messages[0].TypeUrl,
 			Events:      tx.Res.TxResult.Events,
 			GasWanted:   tx.Res.TxResult.GasWanted,
 			GasUsed:     tx.Res.TxResult.GasUsed,
 		}
-		err := models.InsertTxs(ctx, transaction)
-		if err != nil {
+		err := models.InsertTxs(DB, transaction)
+		if errors.Is(err, fmt.Errorf("0")) {
+		} else if err != nil {
 			return fmt.Errorf("models.InsertTxs: %w", err)
 		}
+	}
+	return nil
+}
+
+func InsertMapTxsAddr(DB *gorm.DB, txHash, addr string) error {
+	txID, err := models.FindTxID(DB, txHash)
+	if err != nil {
+		return fmt.Errorf("models.FindTxID: %w", err)
+	}
+	accID, err := models.FindAccID(DB, addr)
+	if err != nil {
+		return fmt.Errorf("models.FindAccID: %w", err)
+	}
+	err = models.InsertMapTxsAddr(DB, txID, accID)
+	if errors.Is(err, fmt.Errorf("0")) {
+	} else if err != nil {
+		return fmt.Errorf("models.InsertMapTxsAddr: %w", err)
 	}
 	return nil
 }

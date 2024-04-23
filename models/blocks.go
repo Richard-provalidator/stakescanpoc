@@ -2,12 +2,11 @@ package models
 
 import (
 	"fmt"
-	"github.com/stakescanpoc/config"
+	"gorm.io/gorm"
 )
 
-func InsertBlocks(ctx config.Context, block Blocks) error {
-	DB := ctx.DB
-	var existBlock []Blocks
+func InsertBlocks(DB *gorm.DB, block Block) error {
+	var existBlock []Block
 	err := DB.Where("height = ?", block.Height).Find(&existBlock).Error
 	if err != nil {
 		return fmt.Errorf("DB.Where: %w", err)
