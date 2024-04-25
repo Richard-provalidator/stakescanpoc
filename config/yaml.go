@@ -5,14 +5,12 @@ import (
 	"os"
 	"runtime"
 
-	"google.golang.org/grpc"
 	"gopkg.in/yaml.v2"
 )
 
 type Config struct {
-	Telegram   Telegram    `yaml:"TELEGRAM"`
-	Database   Database    `yaml:"DATABASE"`
-	ChainInfos []ChainInfo `yaml:"CHAIN_INFOS"`
+	Telegram Telegram `yaml:"TELEGRAM"`
+	Chains   []Chain  `yaml:"CHAINS"`
 }
 
 type Telegram struct {
@@ -30,18 +28,14 @@ type Database struct {
 	MysqlSelectDBName string `yaml:"MYSQL_SELECT_DB_NAME"`
 }
 
-type ChainInfo struct {
-	ChainName        string  `yaml:"CHAIN_NAME"`
-	RPC              string  `yaml:"RPC"`
-	LCD              string  `yaml:"LCD"`
-	ValidatorAddress string  `yaml:"VALIDATOR_ADDRESS"`
-	PrivKey          string  `yaml:"PRIV_KEY"`
-	EX               string  `yaml:"EX"`
-	Denom            string  `yaml:"DENOM"`
-	LeastAmount      float64 `yaml:"LEAST_AMOUNT"`
-	Decimal          float64 `yaml:"DECIMAL"`
-	Rate             float64 `yaml:"RATE"`
-	Conn             *grpc.ClientConn
+type Chain struct {
+	ChainName        string   `yaml:"CHAIN_NAME"`
+	RPC              string   `yaml:"RPC"`
+	ValidatorAddress string   `yaml:"VALIDATOR_ADDRESS"`
+	EX               string   `yaml:"EX"`
+	Denom            string   `yaml:"DENOM"`
+	Decimal          float64  `yaml:"DECIMAL"`
+	Database         Database `yaml:"DATABASE"`
 }
 
 func (d Database) DSN() string {
@@ -49,7 +43,7 @@ func (d Database) DSN() string {
 		d.MysqlUserID, d.MysqlUserPW, d.MysqlServerURL, d.MysqlServerPort, d.MysqlSelectDBName)
 }
 
-func loadYaml(rootPath string) (Config, error) {
+func LoadYaml(rootPath string) (Config, error) {
 	var cfg Config
 	var fileName string
 	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {

@@ -1,5 +1,80 @@
 package service
 
+import (
+	"context"
+	"fmt"
+	rpcclient "github.com/cometbft/cometbft/rpc/client"
+	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
+	"github.com/cosmos/cosmos-sdk/codec"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	grpctypes "github.com/cosmos/cosmos-sdk/types/grpc"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/encoding"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+	"strconv"
+)
+
+type Client struct {
+	RPC     *rpchttp.HTTP
+	grpcCdc encoding.Codec
+}
+
+func NewClient(rpcClient *rpchttp.HTTP) *Client {
+	ir := codectypes.NewInterfaceRegistry()
+	cdc := codec.NewProtoCodec(ir)
+	return &Client{
+		RPC:     rpcClient,
+		grpcCdc: cdc.GRPCCodec(),
+	}
+}
+
+func (c *Client) Invoke(ctx context.Context, method string, args, reply any, _ ...grpc.CallOption) error {
+	req, err := c.grpcCdc.Marshal(args)
+	if err != nil {
+		return err
+	}
+	path := method
+	data := req
+	height, _ := BlockHeightFromOutgoingContext(ctx)
+	res, err := c.RPC.ABCIQueryWithOptions(ctx, path, data, rpcclient.ABCIQueryOptions{Height: height})
+	if err != nil {
+		return fmt.Errorf("abci query: %w", err)
+	}
+	if !res.Response.IsOK() {
+		return status.Error(codes.Unknown, res.Response.Log) // TODO: better status code?
+	}
+	if err := c.grpcCdc.Unmarshal(res.Response.Value, reply); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Client) NewStream(context.Context, *grpc.StreamDesc, string, ...grpc.CallOption) (grpc.ClientStream, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+func BlockHeightFromOutgoingContext(ctx context.Context) (int64, bool) {
+	md, ok := metadata.FromOutgoingContext(ctx)
+	if !ok {
+		return 0, false
+	}
+	vs := md.Get(grpctypes.GRPCBlockHeightHeader)
+	if len(vs) == 0 {
+		return 0, false
+	}
+	height, err := strconv.ParseInt(vs[0], 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return height, true
+}
+
+func AppendBlockHeightToOutgoingContext(ctx context.Context, height int64) context.Context {
+	return metadata.AppendToOutgoingContext(ctx, grpctypes.GRPCBlockHeightHeader, fmt.Sprint(height))
+}
+
 // func connectHTTP(RPC, connectURL string) (*resty.Response, error) {
 // 	client := resty.New()
 // 	res, err := client.R().Get(RPC + connectURL)

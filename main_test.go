@@ -1,7 +1,8 @@
 package main_test
 
 import (
-	"fmt"
+	gaia "github.com/cosmos/gaia/v15/app"
+	"github.com/stakescanpoc/log"
 	"github.com/stakescanpoc/service"
 	"testing"
 
@@ -10,51 +11,46 @@ import (
 
 func Test(t *testing.T) {
 
-	ctx, logger, err := config.InitContext()
+	rootPath := config.GetRootPath()
+	logger, err := log.LogInit(rootPath)
 	if err != nil {
-		fmt.Println(err)
+		panic(err)
 	}
-
+	cfg, err := config.LoadYaml(rootPath)
+	if err != nil {
+		logger.Error.Fatalln("Failed loading config: ", err)
+	}
 	//ctx.Telegram.SendTelegramMsg("HI")
-	for _, chain := range ctx.ChainInfos {
+	for _, chain := range cfg.Chains {
+		db, err := config.ConnectDatabase(chain.Database)
+		if err != nil {
+			logger.Error.Fatalln("Failed config.ConnectDatabase: ", err)
+		}
 		height := int64(20106032)
-		block, err := service.GetBlockByHeightFromRPC(chain.RPC, height)
-		if err != nil {
-			logger.Error.Fatalln("GetBlockByHeightByRPC Failed: ", err)
+		var encCfg config.EncCfg
+		encCfg.Cosmos = gaia.RegisterEncodingConfig()
+		ctx := config.Context{
+			Chain:  chain,
+			DB:     db,
+			Height: height,
+			EncCfg: encCfg,
 		}
-		//err = service.InsertBlock(ctx, block)
+		_ = ctx
+
+		//err = service.DoBlockTxEvents(ctx)
 		//if err != nil {
-		//	logger.Error.Fatalln("InsertBlock Failed: ", err)
+		//	logger.Error.Fatalln("Failed DoBlockTxEvents: ", err)
+		//}
+		//
+		//err = service.DoBlockResultEvents(ctx)
+		//if err != nil {
+		//	logger.Error.Fatalln("Failed DoBlockResultEvents: ", err)
 		//}
 
-		txs, err := service.QueryTx(ctx.DB, chain, block)
+		err = service.DoValidators(ctx)
 		if err != nil {
-			logger.Error.Fatalln("QueryTx Failed: ", err)
+			logger.Error.Fatalln("Failed DoValidators: ", err)
 		}
-		_ = txs
-		//err = service.InsertTxs(ctx, txs)
-		//if err != nil {
-		//	logger.Error.Fatalln("InsertTxs Failed: ", err)
-		//}
 
-		blockResults, err := service.GetBlockResultsFromRPC(chain.RPC, height)
-		if err != nil {
-			logger.Error.Fatalln("GetBlockResultsFromRPC Failed: ", err)
-		}
-		beginEvents, endEvents := service.FindBlockEvents(blockResults)
-		_ = beginEvents
-		_ = endEvents
-
-		err = service.ChangeBalance(ctx.DB, height, chain.Denom, beginEvents)
-		if err != nil {
-			logger.Error.Fatalln("ChangeBalance Failed: ", err)
-		}
-		err = service.ChangeBalance(ctx.DB, height, chain.Denom, endEvents)
-		if err != nil {
-			logger.Error.Fatalln("ChangeBalance Failed: ", err)
-		}
-		//fmt.Println("beginEvents", beginEvents)
-		//fmt.Println("endEvents", endEvents)
-		//fmt.Println("txsResults", txsResults)
 	}
 }

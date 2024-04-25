@@ -2,17 +2,14 @@ package models
 
 import (
 	abcitypes "github.com/cometbft/cometbft/abci/types"
-	"github.com/cometbft/cometbft/types"
-	"github.com/cosmos/cosmos-sdk/types/tx"
-	"github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	"gorm.io/datatypes"
 	"time"
 )
 
 type Block struct {
 	Height                   int64
 	ProposerConsensusAddress string
-	Block                    types.Block
+	Block                    datatypes.JSON
 	Timestamp                time.Time
 }
 
@@ -22,7 +19,7 @@ type Transaction struct {
 	Code        uint32
 	TxHash      string
 	Height      int64
-	Messages    []tx.MsgResponse
+	Messages    datatypes.JSON
 	MessageType string
 	Events      []abcitypes.Event
 	GasWanted   int64
@@ -46,11 +43,11 @@ type MapTransactionAddress struct {
 
 type Account struct {
 	AccID   int64
-	Address string
+	Address []byte
 }
 
 type Balance struct {
-	Address string
+	Address []byte
 	Denom   string
 	Amount  string
 	Height  int64
@@ -63,29 +60,29 @@ type Asset struct {
 }
 
 type Validator struct {
-	ConsensusAddress string
-	Address          string
+	ConsensusAddress []byte
+	Address          []byte
 	Moniker          string
 	Jailed           bool
 	Status           string
 	VotingPower      string
 	Tokens           string
 	CommissionRate   string
-	Info             stakingtypes.Validator
+	Info             datatypes.JSON
 }
 
 type ValidatorsSign struct {
-	ConsensusAddress string
+	ConsensusAddress []byte
 	Height           int64
 }
 
 type Proposal struct {
-	ProposalID int64
-	Proposal   v1beta1.Proposal
+	ProposalID uint64
+	Proposal   datatypes.JSON
 }
 
 type ValidatorsProposalVote struct {
-	ConsensusAddress string
+	ConsensusAddress []byte
 	VoteOption       string
 	TxID             int64
 }

@@ -3,6 +3,8 @@ module github.com/stakescanpoc
 go 1.21
 
 require (
+	cosmossdk.io/math v1.3.0
+	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/cometbft/cometbft v0.37.4
 	github.com/cosmos/cosmos-sdk v0.47.10
 	github.com/cosmos/gaia/v15 v15.2.0
@@ -10,6 +12,7 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 	google.golang.org/grpc v1.61.0
 	gopkg.in/yaml.v2 v2.4.0
+	gorm.io/datatypes v1.2.0
 	gorm.io/driver/mysql v1.5.6
 	gorm.io/gorm v1.25.9
 )
@@ -25,7 +28,6 @@ require (
 	cosmossdk.io/depinject v1.0.0-alpha.4 // indirect
 	cosmossdk.io/errors v1.0.1 // indirect
 	cosmossdk.io/log v1.3.1 // indirect
-	cosmossdk.io/math v1.3.0 // indirect
 	cosmossdk.io/tools/rosetta v0.2.1 // indirect
 	filippo.io/edwards25519 v1.0.0 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect

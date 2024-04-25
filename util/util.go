@@ -1,8 +1,74 @@
 package util
 
 import (
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"github.com/btcsuite/btcutil/bech32"
 	"net/url"
 )
+
+func EncodeBase64(src []byte) string {
+	encoded := base64.StdEncoding.EncodeToString(src)
+	return encoded
+}
+
+func EncodeAddress(src []byte) string {
+	return fmt.Sprintf("%x", src)
+}
+
+func EncodeValPrefixAddress(src string) (string, error) {
+	//lowerChainName := strings.ToLower(chainName)
+	valoperPrefix := "valoper"
+	hrp, decode, err := bech32.Decode(src)
+	newHrp := hrp[:len(hrp)-len(valoperPrefix)]
+	if err != nil {
+		return "", fmt.Errorf("bech32.Decode: %w", err)
+	}
+	fmt.Println(fmt.Sprintf("%x", decode))
+	newAddr, err := bech32.Encode(newHrp, decode)
+	if err != nil {
+		return "", fmt.Errorf("bech32.Encode: %w", err)
+	}
+	return newAddr, nil
+}
+
+func MakeBech32Address(src string) ([]byte, error) {
+	_, decode, err := bech32.Decode(src)
+	if err != nil {
+		return nil, fmt.Errorf("bech32.Decode: %w", err)
+	}
+	return decode, nil
+}
+
+func EdncodeJSON(src any) map[string]interface{} {
+	valJSON := make(map[string]interface{})
+	marshal, err := json.MarshalIndent(src, "", "    ")
+	if err != nil {
+		return valJSON
+	}
+	err = json.Unmarshal(marshal, &valJSON)
+	if err != nil {
+		return valJSON
+	}
+
+	//JSON := make(map[string]interface{})
+	//err = json.Unmarshal(marshal, &JSON)
+	//if err != nil {
+	//	return JSON
+	//}
+	return valJSON
+
+	//// 파싱된 데이터를 사용하여 작업
+	//moniker := parsedData["description"].(map[string]interface{})["moniker"].(string)
+	//fmt.Println("Moniker:", moniker)
+	//
+	//operatorAddress := parsedData["operator_address"].(string)
+	//fmt.Println("Operator Address:", operatorAddress)
+	//
+	//tokens := parsedData["tokens"].(string)
+	//fmt.Println("Tokens:", tokens)
+}
 
 // Make paramstring
 // URLValues 맵을 넣으면 query string으로 반환

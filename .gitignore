@@ -1,4 +1,5 @@
 /log/*.log
 /config/*.env
 /config/*.yaml
+/config/*.json
 .idea/

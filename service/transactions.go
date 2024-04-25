@@ -8,24 +8,28 @@ import (
 	abcitypes "github.com/cometbft/cometbft/abci/types"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
+	"github.com/cosmos/cosmos-sdk/types"
 	sdktx "github.com/cosmos/cosmos-sdk/types/tx"
-	gaia "github.com/cosmos/gaia/v15/app"
 	"github.com/stakescanpoc/config"
 	"github.com/stakescanpoc/models"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
 type TxContext struct {
 	Tx     *sdktx.Tx
-	TxMsgs []sdktx.MsgResponse
+	TxMsgs datatypes.JSON
 	Res    *coretypes.ResultTx
 }
+type TxMsg struct {
+	TxMsg []byte
+}
 
-func QueryTx(DB *gorm.DB, chain config.ChainInfo, result *coretypes.ResultBlock) ([]TxContext, error) {
-	var txs []TxContext
+func QueryTx(ctx config.Context, result *coretypes.ResultBlock) ([]TxContext, error) {
+	var txsContext []TxContext
 	var txsEvents [][]abcitypes.Event
 	for _, txBytes := range result.Block.Txs {
-		rpcClient, err := rpchttp.New(chain.RPC, "/websocket")
+		rpcClient, err := rpchttp.New(ctx.Chain.RPC, "/websocket")
 		if err != nil {
 			// log.Logger.Error.Println("connectRPC Failed : ", err)
 			fmt.Println("connectRPC Failed : ", err)
@@ -35,9 +39,13 @@ func QueryTx(DB *gorm.DB, chain config.ChainInfo, result *coretypes.ResultBlock)
 		if err != nil {
 			return nil, fmt.Errorf("rpcClient.Tx: %w", err)
 		}
-		encCfg := gaia.RegisterEncodingConfig()
-
-		tx, err := encCfg.TxConfig.TxDecoder()(res.Tx)
+		var tx types.Tx
+		switch ctx.Chain.ChainName {
+		case "Cosmos":
+			tx, err = ctx.EncCfg.Cosmos.TxConfig.TxDecoder()(res.Tx)
+		default:
+			return nil, fmt.Errorf("chain is unsupported")
+		}
 		if err != nil {
 			return nil, fmt.Errorf("encCfg.TxConfig.TxDecoder: %w", err)
 		}
@@ -46,58 +54,64 @@ func QueryTx(DB *gorm.DB, chain config.ChainInfo, result *coretypes.ResultBlock)
 		//	return nil, fmt.Errorf("encCfg.TxConfig.TxJSONEncoder: %w", err)
 		//}
 		//fmt.Println(string(txJSON)) // use it
-		var txMsgs []sdktx.MsgResponse
+		var txMsgs []TxMsg
 		msgs := tx.GetMsgs()
 		for _, msg := range msgs {
-			var txMsg sdktx.MsgResponse
-			err = json.Unmarshal(encCfg.Marshaler.MustMarshalJSON(msg), &txMsg)
-			if err != nil {
-				return nil, fmt.Errorf("json.Unmarshal: %w", err)
+			var txMsg []byte
+			switch ctx.Chain.ChainName {
+			case "Cosmos":
+				txMsg = ctx.EncCfg.Cosmos.Marshaler.MustMarshalJSON(msg)
+			default:
+				return nil, fmt.Errorf("chain is unsupported")
 			}
-			txMsgs = append(txMsgs, txMsg)
+			txMsgs = append(txMsgs, TxMsg{txMsg})
+		}
+		marshal, err := json.MarshalIndent(txMsgs, "", "    ")
+		if err != nil {
+			panic(err)
 		}
 
-		fmt.Println(fmt.Sprintf("%x", res.Hash))
+		//fmt.Println(fmt.Sprintf("%x", res.Hash))
 		sdkTx := tx.(interface {
 			GetProtoTx() *sdktx.Tx
 		}).GetProtoTx()
 
 		if res.TxResult.Code == 0 {
-			err = ChangeBalance(DB, result.Block.Height, chain.Denom, res.TxResult.Events)
+			err = ChangeBalance(ctx, res.TxResult.Events)
 			if err != nil {
 				return nil, fmt.Errorf("ChangeBalance: %w", err)
 			}
 		}
 
 		txsEvents = append(txsEvents, res.TxResult.Events)
-		txs = append(txs, TxContext{
+		txsContext = append(txsContext, TxContext{
 			Tx:     sdkTx,
-			TxMsgs: txMsgs,
+			TxMsgs: marshal,
 			Res:    res,
 		})
 
 		for _, event := range res.TxResult.Events {
 			for _, attr := range event.Attributes {
 				if attr.Key == "spender" || attr.Key == "receiver" {
-					account := models.Account{Address: attr.Value}
-					err := models.InsertAccounts(DB, account)
-					if errors.Is(err, fmt.Errorf("0")) {
-					} else if err != nil {
-						return nil, fmt.Errorf("models.InsertAccounts: %w", err)
-					}
-					err = InsertMapTxsAddr(DB, fmt.Sprintf("%x", res.Hash), attr.Value)
-					if err != nil {
-						return nil, err
-					}
+					//account := models.Account{Address: attr.Value}
+					//err := models.InsertAccounts(ctx.DB, account)
+					//if errors.Is(err, fmt.Errorf("0")) {
+					//} else if err != nil {
+					//	return nil, fmt.Errorf("models.InsertAccounts: %w", err)
+					//}
+					//err = InsertMapTxsAddr(ctx.DB, fmt.Sprintf("%x", res.Hash), attr.Value)
+					//if err != nil {
+					//	return nil, err
+					//}
 				}
 			}
 		}
 	}
-	return txs, nil
+	return txsContext, nil
 }
 
-func InsertTxs(DB *gorm.DB, txs []TxContext) error {
-	for i, tx := range txs {
+func InsertTxs(DB *gorm.DB, txsContext []TxContext) error {
+	for i, tx := range txsContext {
 		transaction := models.Transaction{
 			TxIDX:       i,
 			Code:        tx.Res.TxResult.Code,

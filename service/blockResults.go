@@ -5,14 +5,15 @@ import (
 	"fmt"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
+	"github.com/stakescanpoc/config"
 )
 
-func GetBlockResultsFromRPC(RPC string, height int64) (*coretypes.ResultBlockResults, error) {
-	rpcClient, err := rpchttp.New(RPC, "/websocket")
+func GetBlockResultsFromRPC(ctx config.Context) (*coretypes.ResultBlockResults, error) {
+	rpcClient, err := rpchttp.New(ctx.Chain.RPC, "/websocket")
 	if err != nil {
 		return nil, fmt.Errorf("rpchttp.New: %w", err)
 	}
-	results, err := rpcClient.BlockResults(context.Background(), &height)
+	results, err := rpcClient.BlockResults(context.Background(), &ctx.Height)
 	if err != nil {
 		return nil, fmt.Errorf("rpcClient.BlockResults: %w", err)
 	}
