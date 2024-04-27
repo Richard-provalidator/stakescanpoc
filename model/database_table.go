@@ -1,9 +1,10 @@
-package models
+package model
 
 import (
+	"time"
+
 	abcitypes "github.com/cometbft/cometbft/abci/types"
 	"gorm.io/datatypes"
-	"time"
 )
 
 type Block struct {
@@ -15,7 +16,7 @@ type Block struct {
 
 type Transaction struct {
 	TxID        int64
-	TxIDX       int
+	TxIdx       int
 	Code        uint32
 	TxHash      string
 	Height      int64
@@ -30,6 +31,7 @@ type Event struct {
 	Type       string
 	Attributes []EventAttribute
 }
+
 type EventAttribute struct {
 	Key   string
 	Value string
@@ -87,14 +89,14 @@ type ValidatorsProposalVote struct {
 	TxID             int64
 }
 
-type Ibc struct {
+type IBCTransfer struct {
 	TxID   int64
 	Status string
 	Denom  string
 	Amount string
 }
 
-type IbcChannel struct {
+type IBCChannel struct {
 	ChannelID     string
 	State         bool
 	EscrowAddress string

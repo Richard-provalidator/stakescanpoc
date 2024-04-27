@@ -1,10 +1,33 @@
-package models
+package model
+
+import (
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+
+	"github.com/provalidator/stakescan-indexer/config"
+)
 
 // import (
-// 	"github.com/stakescanpoc/log"
+// 	"github.com/provalidator/stakescan-indexer/log"
 // 	"gorm.io/driver/mysql"
 // 	"gorm.io/gorm"
 // )
+
+func ConnectDB(d config.DB) (*gorm.DB, error) {
+	return gorm.Open(mysql.New(mysql.Config{
+		DSN: d.DSN(),
+		// default size for string fields
+		DefaultStringSize: 256,
+		// disable datetime precision, which not supported before MySQL 5.6
+		DisableDatetimePrecision: true,
+		// drop & create when rename index, rename index not supported before MySQL 5.7, MariaDB
+		DontSupportRenameIndex: true,
+		// `change` when rename column, rename column not supported before MySQL 8, MariaDB
+		DontSupportRenameColumn: true,
+		// auto configure based on currently MySQL version
+		SkipInitializeWithVersion: false,
+	}), &gorm.Config{})
+}
 
 func GetAddress() {
 	//현재 있는 모든 어드레스 가져옴
@@ -26,7 +49,7 @@ func UpdateAddress(address, amount string) {
 // 		return err
 // 	}
 // 	if len(todayvalidators) != 0 {
-// 		log.Logger.Info.Println(validators.ChainName, " is already have validators in DB, so it doesn't update to DB")
+// 		log.Logger.Info.Println(validators.Name, " is already have validators in DB, so it doesn't update to DB")
 // 		return nil
 // 	}
 // 	err = DB.Create(&validators).Error
@@ -61,7 +84,7 @@ func UpdateAddress(address, amount string) {
 // 		return err
 // 	}
 // 	if len(todaydelegators) != 0 {
-// 		log.Logger.Info.Println(delegators[0].ChainName, " is already have validators in DB, so it doesn't update to DB")
+// 		log.Logger.Info.Println(delegators[0].Name, " is already have validators in DB, so it doesn't update to DB")
 // 		return nil
 // 	}
 // 	// 트랜잭션 시작
@@ -108,7 +131,7 @@ func UpdateAddress(address, amount string) {
 
 // 	var sends []Sends
 // 	for _, delegator := range delegators {
-// 		sends = append(sends, Sends{ChainName: delegator.ChainName, Address: delegator.Address, PaybackAmount: delegator.PaybackAmount, Denom: delegator.Denom, RegDate: time.Now().Local()})
+// 		sends = append(sends, Sends{Name: delegator.Name, Address: delegator.Address, PaybackAmount: delegator.PaybackAmount, Denom: delegator.Denom, RegDate: time.Now().Local()})
 // 		log.Logger.Trace.Println("Delegator: ", delegator)
 // 	}
 
@@ -204,7 +227,7 @@ func UpdateAddress(address, amount string) {
 // 		return sendResults, claims, err
 // 	}
 // 	for _, send := range sends {
-// 		sendResults = append(sendResults, SendResults{ChainName: send.ChainName, Txhash: send.Txhash, BeginHeight: send.BeginHeight})
+// 		sendResults = append(sendResults, SendResults{Name: send.Name, Txhash: send.Txhash, BeginHeight: send.BeginHeight})
 // 	}
 // 	err = DB.Where("txhash is not null").Where("is_tx_confirm = ?", 0).Find(&claims).Error
 // 	if err != nil {
@@ -415,7 +438,7 @@ func UpdateAddress(address, amount string) {
 // 	//log.Logger.Info.Println("WriteLog. Token:", token, ", IP:", ip, ", Method:", method)
 // 	now := time.Now()
 // 	date := now.Format("2006-01-02 15:04:05")
-// 	input := Proposal{Sub: sub, Token: token, Ip: ip, Method: method, Date: date, ChainName: os.Getenv("CHAIN_NAME")}
+// 	input := Proposal{Sub: sub, Token: token, Ip: ip, Method: method, Date: date, Name: os.Getenv("CHAIN_NAME")}
 // 	DB.Create(&input)
 
 // 	// Usage count

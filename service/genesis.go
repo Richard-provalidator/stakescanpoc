@@ -4,13 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
+
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cometbft/cometbft/types"
-	"github.com/stakescanpoc/models"
-	"github.com/stakescanpoc/util"
 	"gorm.io/gorm"
-	"time"
+
+	"github.com/provalidator/stakescan-indexer/model"
+	"github.com/provalidator/stakescan-indexer/util"
 )
 
 type AppState struct {
@@ -291,7 +293,7 @@ func InsertGenesisBlock(DB *gorm.DB, rootPath string) error {
 	if err != nil {
 		return fmt.Errorf("readGenesis : %w", err)
 	}
-	dbblock := models.Block{
+	dbblock := model.Block{
 		Height:                   genesis.InitialHeight,
 		ProposerConsensusAddress: "",
 		Block:                    nil,
@@ -302,17 +304,17 @@ func InsertGenesisBlock(DB *gorm.DB, rootPath string) error {
 		return fmt.Errorf("InsertBlock : %w", err)
 	}
 
-	var validators []models.Validator
+	var validators []model.Validator
 	for _, genval := range genesis.Validators {
-		bech32ConAddr, err := util.MakeBech32Address(genval.PubKey.Address().String())
+		bech32ConAddr, err := util.DecodeBech32Address(genval.PubKey.Address().String())
 		if err != nil {
-			return fmt.Errorf("util.MakeBech32Address(genval.PubKey.Address().String()): %w", err)
+			return fmt.Errorf("util.DecodeBech32Address(genval.PubKey.Address().String()): %w", err)
 		}
-		bech32Addr, err := util.MakeBech32Address(genval.Address.String())
+		bech32Addr, err := util.DecodeBech32Address(genval.Address.String())
 		if err != nil {
-			return fmt.Errorf("util.MakeBech32Address(genval.Address.String()): %w", err)
+			return fmt.Errorf("util.DecodeBech32Address(genval.Address.String()): %w", err)
 		}
-		val := models.Validator{
+		val := model.Validator{
 			ConsensusAddress: bech32ConAddr,
 			Address:          bech32Addr,
 			Moniker:          genval.Name,
