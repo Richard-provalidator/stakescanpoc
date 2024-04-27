@@ -3,11 +3,13 @@ package service
 import (
 	"context"
 	"fmt"
+
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	"github.com/cosmos/cosmos-sdk/types/query"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
-	"github.com/stakescanpoc/models"
 	"gorm.io/gorm"
+
+	"github.com/provalidator/stakescan-indexer/model"
 )
 
 //type Validator struct {
@@ -43,8 +45,8 @@ import (
 //	VotingPowerPercent float64 `json:"votingPowerPercent"`
 //}
 
-func GetValidatorsByHeightFromRPC(RPC string) ([]stakingtypes.Validator, error) {
-	rpcClient, err := rpchttp.New(RPC, "/websocket")
+func GetValidators(rpc string, height int64) ([]stakingtypes.Validator, error) {
+	rpcClient, err := rpchttp.New(rpc, "/websocket")
 	if err != nil {
 		return nil, fmt.Errorf("rpchttp.New: %w", err)
 	}
@@ -60,7 +62,7 @@ func GetValidatorsByHeightFromRPC(RPC string) ([]stakingtypes.Validator, error) 
 	return res.Validators, nil
 }
 
-func InsertValidators(DB *gorm.DB, validators []models.Validator) error {
+func InsertValidators(db *gorm.DB, validators []model.Validator) error {
 
 	return nil
 }

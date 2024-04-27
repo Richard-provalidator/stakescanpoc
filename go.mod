@@ -1,15 +1,15 @@
-module github.com/stakescanpoc
+module github.com/provalidator/stakescan-indexer
 
 go 1.21
 
 require (
 	cosmossdk.io/math v1.3.0
-	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/cometbft/cometbft v0.37.4
 	github.com/cosmos/cosmos-sdk v0.47.10
 	github.com/cosmos/gaia/v15 v15.2.0
 	github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible
 	github.com/sirupsen/logrus v1.9.0
+	github.com/spf13/cobra v1.8.0
 	google.golang.org/grpc v1.61.0
 	gopkg.in/yaml.v2 v2.4.0
 	gorm.io/datatypes v1.2.0
@@ -158,7 +158,6 @@ require (
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
-	github.com/spf13/cobra v1.8.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.18.1 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect

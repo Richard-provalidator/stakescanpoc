@@ -4,11 +4,24 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"github.com/stakescanpoc/config"
-	"github.com/stakescanpoc/models"
+
+	"github.com/provalidator/stakescan-indexer/model"
 )
 
-func DoBlockTxEvents(ctx config.Context) error {
+func IndexBlock(ctx Context) error {
+	if err := DoBlockTxEvents(ctx); err != nil {
+		return fmt.Errorf("handle block: %w", err)
+	}
+	if err := DoBlockResultEvents(ctx); err != nil {
+		return fmt.Errorf("handle block results: %w", err)
+	}
+	if err := DoValidators(ctx); err != nil {
+		return fmt.Errorf("handle validators: %w", err)
+	}
+	return nil
+}
+
+func DoBlockTxEvents(ctx Context) error {
 	block, err := GetBlockByHeightFromRPC(ctx)
 	if err != nil {
 		return fmt.Errorf("GetBlockByHeightFromRPC: %w", err)
@@ -18,14 +31,14 @@ func DoBlockTxEvents(ctx config.Context) error {
 		return fmt.Errorf("block.Block.ToProto: %w", err)
 	}
 	var blockJSON []byte
-	switch ctx.Chain.ChainName {
+	switch ctx.Chain.Name {
 	case "Cosmos":
-		blockJSON = ctx.EncCfg.Cosmos.Marshaler.MustMarshalJSON(proto)
+		blockJSON = ctx.EncCfg.Marshaler.MustMarshalJSON(proto)
 	default:
 		return fmt.Errorf("chain is unsupported")
 	}
 
-	modelBlock := models.Block{
+	modelBlock := model.Block{
 		Height:                   block.Block.Height,
 		ProposerConsensusAddress: block.Block.ProposerAddress.String(),
 		Block:                    blockJSON,
@@ -42,14 +55,14 @@ func DoBlockTxEvents(ctx config.Context) error {
 		return fmt.Errorf("QueryTx: %w", err)
 	}
 	_ = txsContext
-	//err = InsertTxs(ctx.DB, txsContext)
+	//err = InsertTx(ctx.DB, txsContext)
 	//if err != nil {
-	//	return fmt.Errorf("InsertTxs: %w", err)
+	//	return fmt.Errorf("InsertTx: %w", err)
 	//}
 	return nil
 }
 
-func DoBlockResultEvents(ctx config.Context) error {
+func DoBlockResultEvents(ctx Context) error {
 	blockResults, err := GetBlockResultsFromRPC(ctx)
 	if err != nil {
 		return fmt.Errorf("GetBlockResultsFromRPC: %w", err)
@@ -67,10 +80,10 @@ func DoBlockResultEvents(ctx config.Context) error {
 	return nil
 }
 
-func DoValidators(ctx config.Context) error {
-	validators, err := GetValidatorsByHeightFromRPC(ctx.Chain.RPC)
+func DoValidators(ctx Context) error {
+	validators, err := GetValidators(ctx.Chain.RPC, ctx.Height)
 	if err != nil {
-		return fmt.Errorf("GetValidatorsByHeightFromRPC: %w", err)
+		return fmt.Errorf("GetValidators: %w", err)
 	}
 	//fmt.Println(util.EncodeAddress(validators[0].ConsensusPubkey.Value))
 	hexEncoded := hex.EncodeToString(validators[0].ConsensusPubkey.Value)
@@ -100,7 +113,7 @@ func DoValidators(ctx config.Context) error {
 	//fmt.Println(validators[0].OperatorAddress)
 	//fmt.Println(bech32Addr)
 
-	//var modelValidators []models.Validator
+	//var modelValidators []model.Validator
 	//for _, val := range validators {
 	//	fmt.Println(util.EncodeBase64(val.ConsensusPubkey.Value))
 	//	bech32ConAddr, err := util.MakeBech32Address(util.EncodeBase64(val.ConsensusPubkey.Value))
@@ -112,7 +125,7 @@ func DoValidators(ctx config.Context) error {
 	//	if err != nil {
 	//		return fmt.Errorf("util.MakeBech32Address(val.OperatorAddress): %w", err)
 	//	}
-	//	modelValidator := models.Validator{
+	//	modelValidator := model.Validator{
 	//		ConsensusAddress: nil,
 	//		Address:          bech32Addr,
 	//		Moniker:          val.GetMoniker(),
@@ -129,20 +142,14 @@ func DoValidators(ctx config.Context) error {
 	return nil
 }
 
-func DoProposal(ctx config.Context) error {
+func DoProposal(ctx Context) error {
 	proposals, err := GetProposalsFromRPC(ctx)
 	if err != nil {
 		return fmt.Errorf("GetProposalsFromRPC(ctx) %w", err)
 	}
 	for _, proposal := range proposals {
-		var proposalJSON []byte
-		switch ctx.Chain.ChainName {
-		case "Cosmos":
-			proposalJSON = ctx.EncCfg.Cosmos.Marshaler.MustMarshalJSON(proposal)
-		default:
-			return fmt.Errorf("chain is unsupported")
-		}
-		modelProposal := models.Proposal{
+		proposalJSON := ctx.EncCfg.Marshaler.MustMarshalJSON(proposal)
+		modelProposal := model.Proposal{
 			ProposalID: proposal.Id,
 			Proposal:   proposalJSON,
 		}

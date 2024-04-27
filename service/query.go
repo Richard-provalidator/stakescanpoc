@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"fmt"
+	"strconv"
+
 	rpcclient "github.com/cometbft/cometbft/rpc/client"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -13,7 +15,6 @@ import (
 	"google.golang.org/grpc/encoding"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"strconv"
 )
 
 type Client struct {
@@ -107,8 +108,8 @@ func AppendBlockHeightToOutgoingContext(ctx context.Context, height int64) conte
 //				sendAmount := AmountFinder(sendAccount)
 //				receiveAmount.Add(amount)
 //				sendAmount.Sub(amount)
-//				models.UpdateAddress(receiveAccount, receiveAmount.Add(amount).String())
-//				models.UpdateAddress(sendAccount, sendAmount.Sub(amount).String())
+//				model.UpdateAddress(receiveAccount, receiveAmount.Add(amount).String())
+//				model.UpdateAddress(sendAccount, sendAmount.Sub(amount).String())
 //			}
 //		case "tx":
 //			for _, attribute := range event.Attributes {
@@ -121,7 +122,7 @@ func AppendBlockHeightToOutgoingContext(ctx context.Context, height int64) conte
 //					amount, _ = decimal.NewFromString(attribute.Value)
 //				}
 //				sendAmount := AmountFinder(sendAccount)
-//				models.UpdateAddress(sendAccount, sendAmount.Sub(amount).String())
+//				model.UpdateAddress(sendAccount, sendAmount.Sub(amount).String())
 //			}
 //		}
 //	}
@@ -129,8 +130,8 @@ func AppendBlockHeightToOutgoingContext(ctx context.Context, height int64) conte
 
 //func AmountFinder(account string) decimal.Decimal {
 //	var amount decimal.Decimal
-//	if account == models.Account.Address {
-//		amountstr := models.Account.Amount
+//	if account == model.Account.Address {
+//		amountstr := model.Account.Amount
 //		amount, _ = decimal.NewFromString(amountstr)
 //	}
 //	return amount
@@ -148,9 +149,9 @@ func GetTXEvent() {
 
 }
 
-// func GetBlockByHeightByHTTP(chain models.ChainInfo, height int) (models.BlockJSON, error) {
+// func GetBlockByHeightByHTTP(chain model.ChainInfo, height int) (model.BlockJSON, error) {
 // 	strheight := strconv.Itoa(height)
-// 	var blockJSON models.BlockJSON
+// 	var blockJSON model.BlockJSON
 // 	// log.Logger.Trace.Println("RPC", chain.RPC)
 // 	fmt.Println("RPC", chain.RPC)
 
@@ -161,14 +162,14 @@ func GetTXEvent() {
 // 		return blockJSON, err
 // 	}
 // 	result := string(res.Body())
-// 	// log.Logger.Trace.Println(chain.ChainName, "GetBlockByHeight ", result)
-// 	fmt.Println(chain.ChainName, "GetBlockByHeight ", result)
+// 	// log.Logger.Trace.Println(chain.Name, "GetBlockByHeight ", result)
+// 	fmt.Println(chain.Name, "GetBlockByHeight ", result)
 // 	json.Unmarshal(res.Body(), &blockJSON)
 // 	return blockJSON, nil
 // }
 
-// func GetBlockResultsByHttp(chain models.ChainInfo, height int) (models.BlockResultsJSON, error) {
-// 	var blockResultsJSON models.BlockResultsJSON
+// func GetBlockResultsByHttp(chain model.ChainInfo, height int) (model.BlockResultsJSON, error) {
+// 	var blockResultsJSON model.BlockResultsJSON
 // 	strheight := strconv.Itoa(height)
 // 	res, err := connectHTTP(chain.RPC, "/block_results?height="+strheight)
 // 	if err != nil {

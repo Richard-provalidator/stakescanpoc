@@ -5,15 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	abcitypes "github.com/cometbft/cometbft/abci/types"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
-	"github.com/cosmos/cosmos-sdk/types"
 	sdktx "github.com/cosmos/cosmos-sdk/types/tx"
-	"github.com/stakescanpoc/config"
-	"github.com/stakescanpoc/models"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+
+	"github.com/provalidator/stakescan-indexer/model"
 )
 
 type TxContext struct {
@@ -25,7 +25,7 @@ type TxMsg struct {
 	TxMsg []byte
 }
 
-func QueryTx(ctx config.Context, result *coretypes.ResultBlock) ([]TxContext, error) {
+func QueryTx(ctx Context, result *coretypes.ResultBlock) ([]TxContext, error) {
 	var txsContext []TxContext
 	var txsEvents [][]abcitypes.Event
 	for _, txBytes := range result.Block.Txs {
@@ -39,13 +39,7 @@ func QueryTx(ctx config.Context, result *coretypes.ResultBlock) ([]TxContext, er
 		if err != nil {
 			return nil, fmt.Errorf("rpcClient.Tx: %w", err)
 		}
-		var tx types.Tx
-		switch ctx.Chain.ChainName {
-		case "Cosmos":
-			tx, err = ctx.EncCfg.Cosmos.TxConfig.TxDecoder()(res.Tx)
-		default:
-			return nil, fmt.Errorf("chain is unsupported")
-		}
+		tx, err := ctx.EncCfg.TxConfig.TxDecoder()(res.Tx)
 		if err != nil {
 			return nil, fmt.Errorf("encCfg.TxConfig.TxDecoder: %w", err)
 		}
@@ -57,13 +51,7 @@ func QueryTx(ctx config.Context, result *coretypes.ResultBlock) ([]TxContext, er
 		var txMsgs []TxMsg
 		msgs := tx.GetMsgs()
 		for _, msg := range msgs {
-			var txMsg []byte
-			switch ctx.Chain.ChainName {
-			case "Cosmos":
-				txMsg = ctx.EncCfg.Cosmos.Marshaler.MustMarshalJSON(msg)
-			default:
-				return nil, fmt.Errorf("chain is unsupported")
-			}
+			txMsg := ctx.EncCfg.Marshaler.MustMarshalJSON(msg)
 			txMsgs = append(txMsgs, TxMsg{txMsg})
 		}
 		marshal, err := json.MarshalIndent(txMsgs, "", "    ")
@@ -93,11 +81,11 @@ func QueryTx(ctx config.Context, result *coretypes.ResultBlock) ([]TxContext, er
 		for _, event := range res.TxResult.Events {
 			for _, attr := range event.Attributes {
 				if attr.Key == "spender" || attr.Key == "receiver" {
-					//account := models.Account{Address: attr.Value}
-					//err := models.InsertAccounts(ctx.DB, account)
+					//account := model.Account{Address: attr.Value}
+					//err := model.InsertAccounts(ctx.DB, account)
 					//if errors.Is(err, fmt.Errorf("0")) {
 					//} else if err != nil {
-					//	return nil, fmt.Errorf("models.InsertAccounts: %w", err)
+					//	return nil, fmt.Errorf("model.InsertAccounts: %w", err)
 					//}
 					//err = InsertMapTxsAddr(ctx.DB, fmt.Sprintf("%x", res.Hash), attr.Value)
 					//if err != nil {
@@ -112,8 +100,8 @@ func QueryTx(ctx config.Context, result *coretypes.ResultBlock) ([]TxContext, er
 
 func InsertTxs(DB *gorm.DB, txsContext []TxContext) error {
 	for i, tx := range txsContext {
-		transaction := models.Transaction{
-			TxIDX:       i,
+		transaction := model.Transaction{
+			TxIdx:       i,
 			Code:        tx.Res.TxResult.Code,
 			TxHash:      fmt.Sprintf("%x", tx.Res.Hash),
 			Height:      tx.Res.Height,
@@ -123,28 +111,28 @@ func InsertTxs(DB *gorm.DB, txsContext []TxContext) error {
 			GasWanted:   tx.Res.TxResult.GasWanted,
 			GasUsed:     tx.Res.TxResult.GasUsed,
 		}
-		err := models.InsertTxs(DB, transaction)
+		err := model.InsertTx(DB, transaction)
 		if errors.Is(err, fmt.Errorf("0")) {
 		} else if err != nil {
-			return fmt.Errorf("models.InsertTxs: %w", err)
+			return fmt.Errorf("model.InsertTx: %w", err)
 		}
 	}
 	return nil
 }
 
 func InsertMapTxsAddr(DB *gorm.DB, txHash, addr string) error {
-	txID, err := models.FindTxID(DB, txHash)
+	txID, err := model.FindTxID(DB, txHash)
 	if err != nil {
-		return fmt.Errorf("models.FindTxID: %w", err)
+		return fmt.Errorf("model.FindTxID: %w", err)
 	}
-	accID, err := models.FindAccID(DB, addr)
+	accID, err := model.FindAccID(DB, addr)
 	if err != nil {
-		return fmt.Errorf("models.FindAccID: %w", err)
+		return fmt.Errorf("model.FindAccID: %w", err)
 	}
-	err = models.InsertMapTxsAddr(DB, txID, accID)
+	err = model.InsertMapTxsAddr(DB, txID, accID)
 	if errors.Is(err, fmt.Errorf("0")) {
 	} else if err != nil {
-		return fmt.Errorf("models.InsertMapTxsAddr: %w", err)
+		return fmt.Errorf("model.InsertMapTxsAddr: %w", err)
 	}
 	return nil
 }

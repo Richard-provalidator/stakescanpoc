@@ -2,43 +2,35 @@ package util
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
-	"fmt"
-	"github.com/btcsuite/btcutil/bech32"
 	"net/url"
+	"strings"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/types/bech32"
 )
 
-func EncodeBase64(src []byte) string {
-	encoded := base64.StdEncoding.EncodeToString(src)
-	return encoded
-}
-
-func EncodeAddress(src []byte) string {
-	return fmt.Sprintf("%x", src)
-}
+var (
+	EncodeBase64 = base64.StdEncoding.EncodeToString
+	EncodeAddress = hex.EncodeToString
+)
 
 func EncodeValPrefixAddress(src string) (string, error) {
-	//lowerChainName := strings.ToLower(chainName)
-	valoperPrefix := "valoper"
-	hrp, decode, err := bech32.Decode(src)
-	newHrp := hrp[:len(hrp)-len(valoperPrefix)]
+	hrp, bz, err := bech32.DecodeAndConvert(src)
 	if err != nil {
-		return "", fmt.Errorf("bech32.Decode: %w", err)
+		return "", err
 	}
-	fmt.Println(fmt.Sprintf("%x", decode))
-	newAddr, err := bech32.Encode(newHrp, decode)
-	if err != nil {
-		return "", fmt.Errorf("bech32.Encode: %w", err)
-	}
-	return newAddr, nil
+	hrp = strings.TrimSuffix(hrp, "valoper")
+	return sdk.Bech32ifyAddressBytes(hrp, bz)
 }
 
-func MakeBech32Address(src string) ([]byte, error) {
-	_, decode, err := bech32.Decode(src)
+func DecodeBech32Address(src string) ([]byte, error) {
+	_, decoded, err := bech32.DecodeAndConvert(src)
 	if err != nil {
-		return nil, fmt.Errorf("bech32.Decode: %w", err)
+		return nil, err
 	}
-	return decode, nil
+	return decoded, nil
 }
 
 func EdncodeJSON(src any) map[string]interface{} {
@@ -113,7 +105,7 @@ func MakeQueryString(paramPairs url.Values) string {
 // 	return string(req.Body()), nil
 // }
 
-// func SetConstant(a []models.ApiChainInfo, w []models.Wallet, p []models.Proposals) {
+// func SetConstant(a []model.ApiChainInfo, w []model.Wallet, p []model.Proposals) {
 // 	apiChainUrls = a
 // 	walletInfos = w
 // 	proposalsInfos = p
@@ -143,8 +135,8 @@ func MakeQueryString(paramPairs url.Values) string {
 // 	return latency, out.String()
 // }
 
-// func SaveProposal(chainName string, proposal models.Proposal) {
-// 	// models.DB.Begin()
+// func SaveProposal(chainName string, proposal model.Proposal) {
+// 	// model.DB.Begin()
 // 	// voteOption := GetVoteCheck(chainName, proposal.ProposalID)
 // 	// log.Logger.Trace.Println(proposal)
 // 	sql := `
@@ -152,19 +144,19 @@ func MakeQueryString(paramPairs url.Values) string {
 // 	VALUES(?, ?, ?, ?, ?, ?, ?, ?, NOW())
 // 	ON DUPLICATE KEY UPDATE status = ?, update_date = NOW()
 // 	`
-// 	stmt, _ := models.DB.DB().Prepare(sql)
+// 	stmt, _ := model.DB.DB().Prepare(sql)
 // 	_, err := stmt.Exec(chainName, proposal.ProposalID, proposal.Content.TypeURL, proposal.Content.Title, proposal.Content.Description, proposal.Status, proposal.VotingStartTime, proposal.VotingEndTime, proposal.Status)
 
 // 	if err != nil {
-// 		models.DB.Rollback()
+// 		model.DB.Rollback()
 // 		log.Logger.Error.Println(err)
 // 		return
 // 	}
 // 	// log.Logger.Info.Println(chain, proposal.ProposalID, proposal.Content.TypeURL, proposal.Content.Title, proposal.Content.Description, proposal.Status, proposal.VotingStartTime, proposal.VotingEndTime, voteOption, proposal.Status, voteOption)
-// 	models.DB.Begin().Commit()
+// 	model.DB.Begin().Commit()
 // }
 
-// func GetProposalJson(wg *sync.WaitGroup, URL string, chainName string, proposalsJson *models.ProposalsJson) {
+// func GetProposalJson(wg *sync.WaitGroup, URL string, chainName string, proposalsJson *model.ProposalsJson) {
 // 	res, err := CallURL(URL, 10) // timeout 10 sec
 // 	if err != nil {
 // 		log.Logger.Error.Println("GetProposalJson error:", err)
@@ -179,7 +171,7 @@ func MakeQueryString(paramPairs url.Values) string {
 // 	// api 호출 후 해당 코인 마다 최대 10개씩 가장 최근의 프로포절을 들고온다.
 // 	// 프로포절 10개를 DB에 업데이트
 // 	for _, proposal := range proposalsJson.Proposals {
-// 		chainName := models.GetChainNameFromDenom(proposal.TotalDeposit[0].Denom)
+// 		chainName := model.GetChainNameFromDenom(proposal.TotalDeposit[0].Denom)
 // 		go SaveProposal(chainName, proposal)
 // 	}
 // 	defer wg.Done()
@@ -191,12 +183,12 @@ func MakeQueryString(paramPairs url.Values) string {
 
 // 	// DB에서 가져온 코인 api 정보 리스트 수 대로 루프( 현재 20개)
 // 	for _, apiChainUrl := range apiChainUrls {
-// 		var proposalsJson models.ProposalsJson
+// 		var proposalsJson model.ProposalsJson
 // 		proposalUrl := apiChainUrl.Url + "/cosmos/gov/v1beta1/proposals?pagination.limit=10&pagination.reverse=true"
 // 		log.Logger.Trace.Println(proposalUrl)
 // 		wg.Add(1)
 // 		// api 호출
-// 		go GetProposalJson(&wg, proposalUrl, apiChainUrl.ChainName, &proposalsJson)
+// 		go GetProposalJson(&wg, proposalUrl, apiChainUrl.Name, &proposalsJson)
 // 		wg.Wait()
 // 	}
 // }
@@ -205,7 +197,7 @@ func MakeQueryString(paramPairs url.Values) string {
 // func GetChainUrl(chainName string) string {
 // 	chainUrl := ""
 // 	for _, apiChainUrl := range apiChainUrls {
-// 		if apiChainUrl.ChainName == chainName {
+// 		if apiChainUrl.Name == chainName {
 // 			chainUrl = apiChainUrl.Url
 // 			break
 // 		}
@@ -220,19 +212,19 @@ func MakeQueryString(paramPairs url.Values) string {
 // 	for _, proposalsInfo := range proposalsInfos {
 // 		wg.Add(1)
 // 		// api 호출
-// 		go GetVoteCheck(&wg, proposalsInfo.ChainName, proposalsInfo.ProposalID, proposalsInfo.Status)
+// 		go GetVoteCheck(&wg, proposalsInfo.Name, proposalsInfo.ProposalID, proposalsInfo.Status)
 // 	}
 // 	wg.Wait()
 // }
 
 // // api를 통해서 보팅 여부를 db에 기록
 // func GetVoteCheck(wg *sync.WaitGroup, chainName string, proposalNum string, status string) {
-// 	var voteCheckJson models.VoteCheckJson
+// 	var voteCheckJson model.VoteCheckJson
 // 	voteOption := "VOTE_OPTION_UNKNOWN"
 // 	voteCheckUrl := ""
 
 // 	if status == "PROPOSAL_STATUS_VOTING_PERIOD" {
-// 		var lcdVoteCheckJson models.LcdVoteCheckJson
+// 		var lcdVoteCheckJson model.LcdVoteCheckJson
 // 		lcdUrl := GetChainUrl(chainName)
 // 		validatorAddr := GetValidatorAddress(chainName)
 // 		voteCheckUrl = lcdUrl + "/cosmos/gov/v1beta1/proposals/" + proposalNum + "/votes/" + validatorAddr
@@ -270,13 +262,13 @@ func MakeQueryString(paramPairs url.Values) string {
 // 	log.Logger.Info.Println("voteOption["+chainName+"_"+proposalNum+"]", voteOption)
 
 // 	voteUpdateSql := `UPDATE proposals SET vote_option = ? WHERE chain_name = ? AND proposal_id = ?`
-// 	stmt, _ := models.DB.DB().Prepare(voteUpdateSql)
+// 	stmt, _ := model.DB.DB().Prepare(voteUpdateSql)
 // 	_, err2 := stmt.Exec(voteOption, chainName, proposalNum)
-// 	models.DB.Begin().Commit()
+// 	model.DB.Begin().Commit()
 
 // 	if err2 != nil {
 // 		log.Logger.Error.Println("GetVoteCheck3 error:", err2)
-// 		models.DB.Rollback()
+// 		model.DB.Rollback()
 // 		wg.Done()
 // 		return
 // 	}
@@ -301,7 +293,7 @@ func MakeQueryString(paramPairs url.Values) string {
 // }
 
 // // json으로부터 해당 주소가 보팅을 했는지 체크
-// func GetVoteOption(chainName string, voteCheckJson models.VoteCheckJson) string {
+// func GetVoteOption(chainName string, voteCheckJson model.VoteCheckJson) string {
 // 	voteOption := "VOTE_OPTION_UNKNOWN"
 // 	for _, vote := range voteCheckJson {
 // 		if vote.Voter == GetValidatorAddress(chainName) {
@@ -316,7 +308,7 @@ func MakeQueryString(paramPairs url.Values) string {
 // func GetValidatorAddress(chainName string) string {
 // 	address := "unknown"
 // 	for _, w := range walletInfos {
-// 		if w.ChainName == chainName {
+// 		if w.Name == chainName {
 // 			return w.Address
 // 		}
 // 	}
@@ -324,10 +316,10 @@ func MakeQueryString(paramPairs url.Values) string {
 // }
 
 // // 지연율 db에 업데이트
-// func ApiLatencyUpdate(wg *sync.WaitGroup, apiChainInfo models.ApiChainInfo) {
+// func ApiLatencyUpdate(wg *sync.WaitGroup, apiChainInfo model.ApiChainInfo) {
 // 	apiCheckUrl := apiChainInfo.Url + "/cosmos/base/tendermint/v1beta1/blocks/latest"
-// 	latency, height, result := CosmosApiLatencyCheck(apiChainInfo.ChainName, apiCheckUrl)
-// 	models.DB.Exec("UPDATE api_URLs SET latency = ?, height = ?, update_date = NOW(), result = ? WHERE URL = ?", latency.Milliseconds(), height, result, apiChainInfo.Url)
+// 	latency, height, result := CosmosApiLatencyCheck(apiChainInfo.Name, apiCheckUrl)
+// 	model.DB.Exec("UPDATE api_URLs SET latency = ?, height = ?, update_date = NOW(), result = ? WHERE URL = ?", latency.Milliseconds(), height, result, apiChainInfo.Url)
 // 	wg.Done()
 // }
 
@@ -335,7 +327,7 @@ func MakeQueryString(paramPairs url.Values) string {
 // 	var wg sync.WaitGroup
 
 // 	// DB로 부터 api URL들을 가져온다.
-// 	apiChainInfos := models.GetApiChainInfos()
+// 	apiChainInfos := model.GetApiChainInfos()
 // 	// log.Logger.Trace.Println("apiChainInfos", apiChainInfos)
 
 // 	// Cosmos 계열 지연율 체크
@@ -350,7 +342,7 @@ func MakeQueryString(paramPairs url.Values) string {
 // // Cosmos Api Latency Check
 // func CosmosApiLatencyCheck(chain string, URL string) (time.Duration, int, string) {
 // 	latency, jsonRes := LatencyCheck(URL)
-// 	var apiBlockInfoNew models.ApiBlockInfoNew
+// 	var apiBlockInfoNew model.ApiBlockInfoNew
 // 	var err error
 // 	var height int
 // 	err = json.Unmarshal([]byte(jsonRes), &apiBlockInfoNew)

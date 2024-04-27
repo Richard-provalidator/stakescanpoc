@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	v1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
-	"github.com/stakescanpoc/config"
-	"github.com/stakescanpoc/models"
+
+	"github.com/provalidator/stakescan-indexer/model"
 )
 
-func GetProposalsFromRPC(ctx config.Context) ([]*v1.Proposal, error) {
+func GetProposalsFromRPC(ctx Context) ([]*v1.Proposal, error) {
 	rpcClient, err := rpchttp.New(ctx.Chain.RPC, "/websocket")
 	if err != nil {
 		return nil, fmt.Errorf("rpchttp.New: %w", err)
@@ -25,15 +26,15 @@ func GetProposalsFromRPC(ctx config.Context) ([]*v1.Proposal, error) {
 	return res.Proposals, nil
 }
 
-func UpdateProposals(ctx config.Context, proposal models.Proposal) error {
-	err := models.InsertProposal(ctx.DB, proposal)
-	if errors.Is(err, fmt.Errorf("0")) {
-		err := models.UpdateProposal(ctx.DB, proposal)
+func UpdateProposals(ctx Context, proposal model.Proposal) error {
+	err := model.InsertProposal(ctx.DB, proposal)
+	if errors.Is(err, model.ErrAlreadyExists) {
+		err := model.UpdateProposal(ctx.DB, proposal)
 		if err != nil {
-			return fmt.Errorf("models.UpdateProposal: %w", err)
+			return fmt.Errorf("update proposal: %w", err)
 		}
 	} else if err != nil {
-		return fmt.Errorf("models.InsertProposal: %w", err)
+		return fmt.Errorf("insert proposal: %w", err)
 	}
 
 	return nil
